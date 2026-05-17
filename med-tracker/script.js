@@ -20,8 +20,6 @@ function doGet(e) {
     else if (action === 'logPain')        result = logPain(e.parameter);
     else if (action === 'getTodayPain')      result = getTodayPain();
     else if (action === 'getMilestones')     result = getMilestones();
-    else if (action === 'markMilestone')     result = markMilestone(e.parameter);
-    else if (action === 'unmarkMilestone')   result = unmarkMilestone(e.parameter);
     else if (action === 'logColdTherapy')    result = logColdTherapy(e.parameter);
     else if (action === 'getColdTherapyLog') result = getColdTherapyLog();
     else result = { error: 'Unknown action: ' + action };
@@ -156,9 +154,10 @@ function getTodayRom() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    if (String(row[0]) === todayStr) {
+    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    if (rowDate === todayStr) {
       sessions.push({
-        date:            String(row[0]),
+        date:            rowDate,
         startTime:       String(row[1]),
         endTime:         String(row[2]),
         durationMinutes: Number(row[3]) || 0
@@ -345,50 +344,15 @@ function getMilestones() {
     const row = data[i];
     if (!row[0]) continue;
     milestones.push({
-      id:            String(row[0]),
-      name:          String(row[1]),
-      category:      String(row[2] || ''),
-      target_date:   row[3] ? Utilities.formatDate(new Date(row[3]), tz, 'yyyy-MM-dd') : null,
-      achieved_date: row[4] ? Utilities.formatDate(new Date(row[4]), tz, 'yyyy-MM-dd') : null,
-      notes:         String(row[5] || '')
+      id:    String(row[0]),
+      name:  String(row[1]),
+      date:  row[2] ? Utilities.formatDate(new Date(row[2]), tz, 'yyyy-MM-dd') : null,
+      notes: String(row[3] || '')
     });
   }
 
+  milestones.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   return milestones;
-}
-
-function markMilestone(params) {
-  const id = params.id;
-  if (!id) return { error: 'id required' };
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Milestones');
-  const data  = sheet.getDataRange().getValues();
-  const tz    = Session.getScriptTimeZone();
-  const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === id) {
-      sheet.getRange(i + 1, 5).setValue(today);
-      return { success: true, id, achieved_date: today };
-    }
-  }
-  return { error: 'Milestone not found: ' + id };
-}
-
-function unmarkMilestone(params) {
-  const id = params.id;
-  if (!id) return { error: 'id required' };
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Milestones');
-  const data  = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === id) {
-      sheet.getRange(i + 1, 5).setValue('');
-      return { success: true, id };
-    }
-  }
-  return { error: 'Milestone not found: ' + id };
 }
 
 function getTodayPt() {

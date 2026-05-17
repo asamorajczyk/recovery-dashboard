@@ -291,7 +291,7 @@
 
     <!-- Send request -->
     <div class="request-card">
-      <textarea id="note" placeholder="send a message directly to Ashley (optional)"></textarea>
+      <textarea id="note" placeholder="send a message directly to Ashley"></textarea>
       <button id="send-btn" onclick="sendAlert()">Send Request</button>
       <div class="notify-toast" id="notify-toast"></div>
     </div>
@@ -680,19 +680,34 @@
         const data = await res.json();
         const blurb = document.getElementById('milestone-blurb');
         const card  = document.getElementById('milestone-card');
+
         if (!data.length) {
-          blurb.textContent = 'no milestones yet — tap to add';
+          blurb.textContent = 'no milestones yet';
           card.style.borderLeftColor = 'var(--border-bright)';
           return;
         }
-        const total    = data.length;
-        const achieved = data.filter(m => m.achieved_date).length;
-        const latest   = data.filter(m => m.achieved_date).sort((a, b) => b.achieved_date.localeCompare(a.achieved_date))[0];
-        const pct      = Math.round(achieved / total * 100);
-        blurb.innerHTML = achieved === total
-          ? `<span style="color:var(--green)">&#10003; all ${total} milestones achieved!</span>`
-          : `${achieved} / ${total} achieved${latest ? `<br>last: ${latest.name}` : ''}`;
-        card.style.borderLeftColor = pct === 100 ? 'var(--green)' : achieved > 0 ? 'var(--yellow)' : 'var(--border-bright)';
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const passed   = data.filter(m => m.date && m.date < todayStr);
+        const upcoming = data.filter(m => m.date && m.date >= todayStr);
+        const next     = upcoming[0];
+
+        function daysFrom(dateStr) {
+          const today = new Date(); today.setHours(0,0,0,0);
+          return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+        }
+
+        if (next) {
+          const days = daysFrom(next.date);
+          const line = days === 0 ? `today — ${next.name}`
+                     : days === 1 ? `1 day until ${next.name}`
+                     : `${days} days until ${next.name}`;
+          blurb.textContent = line;
+        } else {
+          blurb.innerHTML = `<span style="color:var(--green)">&#10003; all milestones reached</span>`;
+        }
+
+        card.style.borderLeftColor = upcoming.length === 0 ? 'var(--green)' : passed.length > 0 ? 'var(--yellow)' : 'var(--border-bright)';
       } catch (err) {
         document.getElementById('milestone-blurb').textContent = '// could not load';
       }
