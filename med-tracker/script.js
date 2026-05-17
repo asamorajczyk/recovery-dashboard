@@ -20,6 +20,7 @@ function doGet(e) {
     else if (action === 'logPain')        result = logPain(e.parameter);
     else if (action === 'getTodayPain')      result = getTodayPain();
     else if (action === 'getMilestones')     result = getMilestones();
+    else if (action === 'getWeekStats')      result = getWeekStats();
     else if (action === 'logColdTherapy')    result = logColdTherapy(e.parameter);
     else if (action === 'getColdTherapyLog') result = getColdTherapyLog();
     else result = { error: 'Unknown action: ' + action };
@@ -332,6 +333,82 @@ function getColdTherapyLog() {
   }
 
   return { sessions };
+}
+
+function getWeekStats() {
+  const tz    = Session.getScriptTimeZone();
+  const today = new Date();
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const days = [], dayLabels = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(Utilities.formatDate(d, tz, 'yyyy-MM-dd'));
+    dayLabels.push(DAY_NAMES[d.getDay()]);
+  }
+
+  function initMap() { const m = {}; days.forEach(d => m[d] = 0); return m; }
+
+  // ROM
+  const romSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ROM Log');
+  const romData  = romSheet.getDataRange().getValues();
+  const romByDay = initMap();
+  for (let i = 1; i < romData.length; i++) {
+    if (!romData[i][0]) continue;
+    const ds = Utilities.formatDate(new Date(romData[i][0]), tz, 'yyyy-MM-dd');
+    if (ds in romByDay) romByDay[ds] += Number(romData[i][3]) || 0;
+  }
+
+  // Pain
+  const painSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Pain Log');
+  const painData  = painSheet.getDataRange().getValues();
+  const painSum   = initMap(), painCount = initMap();
+  for (let i = 1; i < painData.length; i++) {
+    if (!painData[i][0]) continue;
+    const ds = Utilities.formatDate(new Date(painData[i][0]), tz, 'yyyy-MM-dd');
+    if (ds in painSum) { painSum[ds] += Number(painData[i][1]) || 0; painCount[ds]++; }
+  }
+
+  // PT log
+  const ptLogSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('PT Log');
+  const ptLogData  = ptLogSheet.getDataRange().getValues();
+  const ptByDay    = initMap();
+  for (let i = 1; i < ptLogData.length; i++) {
+    if (!ptLogData[i][0]) continue;
+    const ds = Utilities.formatDate(new Date(ptLogData[i][0]), tz, 'yyyy-MM-dd');
+    if (ds in ptByDay) ptByDay[ds] += Number(ptLogData[i][3]) || 0;
+  }
+
+  // PT goal (total sets per day across active exercises)
+  const ptExSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('PT Exercises');
+  const ptExData  = ptExSheet.getDataRange().getValues();
+  let ptGoal = 0;
+  for (let i = 1; i < ptExData.length; i++) {
+    const active = ptExData[i][5];
+    if (active === true || String(active).toUpperCase() === 'TRUE') ptGoal += Number(ptExData[i][3]) || 0;
+  }
+
+  // Cold therapy
+  const coldSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
+  const coldData  = coldSheet.getDataRange().getValues();
+  const coldByDay = initMap();
+  for (let i = 1; i < coldData.length; i++) {
+    if (!coldData[i][0]) continue;
+    const ds    = Utilities.formatDate(new Date(coldData[i][0]), tz, 'yyyy-MM-dd');
+    const event = String(coldData[i][1]).trim().toLowerCase();
+    if (ds in coldByDay && event !== 'stopped') coldByDay[ds]++;
+  }
+
+  return {
+    days,
+    dayLabels,
+    rom:    days.map(d => romByDay[d]),
+    pain:   days.map(d => painCount[d] > 0 ? Math.round(painSum[d] / painCount[d] * 10) / 10 : null),
+    pt:     days.map(d => ptByDay[d]),
+    ptGoal,
+    cold:   days.map(d => coldByDay[d])
+  };
 }
 
 function getMilestones() {

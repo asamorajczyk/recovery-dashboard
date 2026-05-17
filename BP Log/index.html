@@ -95,24 +95,15 @@
       text-transform: uppercase;
     }
 
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .back-link {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       color: var(--muted);
       letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
     }
-
-    .status-dot::before {
-      content: '';
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: blink 2.5s ease-in-out infinite;
-    }
+    .back-link:active { color: var(--ink); }
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
@@ -281,7 +272,7 @@
         <h1>VITAL<span>S</span></h1>
         <p>Blood pressure monitor</p>
       </div>
-      <div class="status-dot">READY</div>
+      <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
     </div>
 
     <div class="fields">

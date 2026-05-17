@@ -223,7 +223,6 @@
     .tool-blurb .due   { color: var(--accent); }
     .tool-blurb .soon  { color: var(--yellow); }
     .tool-blurb .ok    { color: var(--green); }
-    .tool-blurb .apap  { color: var(--border-bright); margin-top: 2px; }
 
     /* 2-column square card grid */
     .card-grid {
@@ -488,18 +487,13 @@
     // ── Med blurb ────────────────────────────────────────────
     async function loadMedStatus() {
       try {
-        const [medsRes, logRes, configRes] = await Promise.all([
+        const [medsRes, logRes] = await Promise.all([
           fetch(`${SCRIPT_URL}?action=getMeds`),
-          fetch(`${SCRIPT_URL}?action=getTodayLog`),
-          fetch(`${SCRIPT_URL}?action=getConfig`)
+          fetch(`${SCRIPT_URL}?action=getTodayLog`)
         ]);
 
         const meds     = await medsRes.json();
         const todayLog = await logRes.json();
-        const config   = await configRes.json();
-
-        const limitMg   = Number(config.apap_limit_mg) || 3000;
-        const totalApap = todayLog.reduce((s, e) => s + (Number(e.apap_mg) || 0), 0);
 
         function lastDoseFor(medId) {
           return todayLog
@@ -556,7 +550,6 @@
           lines.push(`<span class="ok">&#10003; all on schedule</span>`);
         }
 
-        lines.push(`<div class="apap">apap today: ${totalApap}mg / ${limitMg}mg</div>`);
         blurb.innerHTML = lines.join('<br>');
 
         // Color the card border based on urgency
@@ -664,8 +657,14 @@
         else if (totalMin < 60) agoStr = `${totalMin}m ago`;
         else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
 
-        const complete = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-        blurb.innerHTML = `last ice: ${agoStr}<br>${complete} session${complete !== 1 ? 's' : ''} today`;
+        const complete  = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
+        const totalSec  = sessions.reduce((sum, s) => sum + (Number(s.duration_sec) || 0), 0);
+        const totalMins = Math.floor(totalSec / 60);
+        const totalH    = Math.floor(totalMins / 60);
+        const totalMrem = totalMins % 60;
+        const totalStr  = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${totalMins}m`;
+
+        blurb.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><span>last ice: ${agoStr}</span><div style="text-align:right"><div style="color:var(--ice)">${complete} session${complete !== 1 ? 's' : ''} today</div><div>${totalStr} total</div></div></div>`;
 
         card.style.borderLeftColor = 'var(--ice)';
 

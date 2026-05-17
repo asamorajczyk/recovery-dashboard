@@ -77,24 +77,15 @@
       text-transform: uppercase;
     }
 
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .back-link {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       color: var(--muted);
       letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
     }
-
-    .status-dot::before {
-      content: '';
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: blink 2.5s ease-in-out infinite;
-    }
+    .back-link:active { color: var(--ink); }
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
@@ -120,7 +111,9 @@
       letter-spacing: 0.15em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 8px;
+      flex-shrink: 0;
+      align-self: flex-end;
+      padding-bottom: 2px;
     }
 
     .appt-card.soon   .appt-days { color: var(--yellow); }
@@ -132,6 +125,12 @@
       letter-spacing: 1.5px;
       text-transform: uppercase;
       line-height: 1;
+    }
+
+    .appt-title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
       margin-bottom: 6px;
     }
 
@@ -208,7 +207,7 @@
         <h1>APPOINT<span>MENTS</span></h1>
         <p>Upcoming schedule</p>
       </div>
-      <div class="status-dot">LIVE</div>
+      <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
     </div>
 
     <div id="appt-list"></div>
@@ -249,26 +248,22 @@
           const days     = daysUntil(appt.date);
           const daysStr  = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
           const urgency  = days <= 1 ? 'urgent' : days <= 7 ? 'soon' : '';
-          const hasAddr  = appt.location_address && appt.location_address !== 'undefined' && appt.location_address.trim() !== '';
           const hasNotes = appt.notes && appt.notes !== 'undefined' && appt.notes.trim() !== '';
 
           const card = document.createElement('div');
           card.className = `appt-card ${urgency}`;
 
           card.innerHTML = `
-            <div class="appt-days">// ${daysStr}</div>
-            <div class="appt-title">${appt.title}</div>
+            <div class="appt-title-row">
+              <div class="appt-title">${appt.title}</div>
+              <div class="appt-days">// ${daysStr}</div>
+            </div>
             <div class="appt-datetime">${formatDate(appt.date)}${appt.time ? ' &middot; ' + appt.time : ''}</div>
             <div class="sep-mini"></div>
             ${appt.location_name ? `
               <div class="detail-row">
                 <div class="detail-label">Location</div>
                 <div class="detail-value">${appt.location_name}</div>
-              </div>` : ''}
-            ${hasAddr ? `
-              <div class="detail-row">
-                <div class="detail-label">Address</div>
-                <div class="detail-value">${appt.location_address}</div>
               </div>` : ''}
             ${hasNotes ? `
               <div class="sep-mini"></div>

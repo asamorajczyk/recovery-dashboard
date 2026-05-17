@@ -76,15 +76,15 @@
       text-transform: uppercase;
     }
 
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .back-link {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       color: var(--muted);
       letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
     }
+    .back-link:active { color: var(--ink); }
 
     .status-dot::before {
       content: '';
@@ -315,7 +315,7 @@
         <h1>PAIN <span>LOG</span></h1>
         <p>How are you feeling?</p>
       </div>
-      <div class="status-dot">LIVE</div>
+      <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
     </div>
 
     <div class="note-wrap">

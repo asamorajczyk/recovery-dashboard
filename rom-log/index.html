@@ -78,29 +78,15 @@
       text-transform: uppercase;
     }
 
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .back-link {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       color: var(--muted);
       letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
     }
-
-    .status-dot::before {
-      content: '';
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: blink 2.5s ease-in-out infinite;
-    }
-
-    .status-dot.running::before {
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent);
-    }
+    .back-link:active { color: var(--ink); }
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
@@ -292,7 +278,7 @@
         <h1>ROM <span>LOG</span></h1>
         <p>Range of motion machine</p>
       </div>
-      <div class="status-dot" id="status-dot">IDLE</div>
+      <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
     </div>
 
     <!-- Daily progress -->
@@ -405,8 +391,6 @@
 
         document.getElementById('timer-display').className = 'timer-display running';
         document.getElementById('timer-label').textContent = '// Session in progress';
-        document.getElementById('status-dot').textContent = 'RUNNING';
-        document.getElementById('status-dot').className = 'status-dot running';
         document.getElementById('toast').className = 'toast';
 
         startTimerTick();
@@ -451,8 +435,6 @@
         document.getElementById('timer-display').textContent = '00:00:00';
         document.getElementById('timer-display').className = 'timer-display';
         document.getElementById('timer-label').textContent = '// Current session';
-        document.getElementById('status-dot').textContent = 'IDLE';
-        document.getElementById('status-dot').className = 'status-dot';
 
         btn.innerHTML = '&#9654;&nbsp; Start Session';
         btn.disabled = false;
@@ -519,8 +501,6 @@
       btn.className = 'stop';
       document.getElementById('timer-display').className = 'timer-display running';
       document.getElementById('timer-label').textContent = '// Session in progress';
-      document.getElementById('status-dot').textContent = 'RUNNING';
-      document.getElementById('status-dot').className = 'status-dot running';
       startTimerTick();
     }
 
