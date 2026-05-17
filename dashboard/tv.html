@@ -332,7 +332,7 @@
     /* Big number display (ROM) */
     .big-num {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 4.5vw;
+      font-size: 3.5vw;
       line-height: 1;
       margin-bottom: 4px;
       transition: color 0.3s;
@@ -536,11 +536,9 @@
         <div class="panel-title">Range of Motion</div>
 
         <div class="big-num" id="rom-num">—</div>
-        <div class="big-sub" id="rom-sub">/ 4h 00m today</div>
 
         <!-- ROM progress fills all remaining space -->
         <div class="fill-section">
-          <div class="fill-label" id="rom-fill-label">progress toward goal</div>
           <div class="fill-track">
             <div class="fill-inner" id="rom-bar" style="width:0%;background:var(--accent)"></div>
           </div>
@@ -753,10 +751,7 @@
         bar.style.width      = pct + '%';
         bar.style.background = done ? 'var(--green)' : 'var(--accent)';
 
-        document.getElementById('rom-fill-label').textContent =
-          done ? `goal reached — ${fmtMins(mins)} today` : `${Math.round(pct)}% of 4-hour goal`;
-
-        document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
+document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
         document.getElementById('rom-updated').textContent = `updated ${timeNow()}`;
       } catch(e) {}
     }
