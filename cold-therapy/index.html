@@ -413,6 +413,7 @@
       elapsed   = 0;
       sessionId = new Date().toISOString();
 
+      localStorage.setItem('cold_therapy_session_start', Date.now().toString());
       document.getElementById('timer-block').className  = 'timer-block running';
       document.getElementById('status-label').textContent = '// session active';
       document.getElementById('timer-sub').textContent  = 'keep ice in place';
@@ -437,6 +438,7 @@
       document.getElementById('timer-sub').textContent  = 'great work — remove ice';
       document.getElementById('progress-bar').className = 'progress-bar done';
 
+      localStorage.removeItem('cold_therapy_session_start');
       setDisplay(0, 'done');
       playDoneBeeps();
 
@@ -449,6 +451,7 @@
 
     function transitionStopped() {
       if (tickId) { clearInterval(tickId); tickId = null; }
+      localStorage.removeItem('cold_therapy_session_start');
       const dur = elapsed;
       state = 'idle';
 

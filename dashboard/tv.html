@@ -24,13 +24,23 @@
       --ice: #38bdf8;
     }
 
-    html, body {
+    html {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background: var(--bg);
+      background: #000;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
       color: var(--ink);
       font-family: 'Rajdhani', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     body::before {
@@ -49,7 +59,12 @@
       z-index: 1;
       display: grid;
       grid-template-rows: auto 1fr;
-      height: 100vh;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      aspect-ratio: 16 / 9;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--bg);
       padding: 20px 24px 20px;
       gap: 16px;
     }
@@ -114,87 +129,48 @@
       50% { opacity: 0.3; }
     }
 
-    /* Grid */
+    /* Grid — 4 equal rows, explicit panel placement */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      grid-template-rows: 1fr 1fr auto;
+      grid-template-rows: 1fr 1fr 1fr 1fr;
       gap: 14px;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    /* Cold therapy strip */
-    .cold-strip {
-      grid-column: 1 / -1;
-      flex-direction: row;
-      align-items: center;
-      gap: 0;
-      padding: 14px 24px;
-      border-top: 3px solid var(--ice);
-    }
+    #med-panel  { grid-column: 1; grid-row: 1 / 3; }
+    #rom-panel  { grid-column: 2; grid-row: 1; }
+    #cold-panel { grid-column: 2; grid-row: 2; border-top-color: var(--ice); }
+    #pt-panel   { grid-column: 1; grid-row: 3 / 5; }
+    #appt-panel { grid-column: 2; grid-row: 3 / 5; }
 
-    .cold-strip .panel-title {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      border-bottom: none;
-      font-size: 1.1vw;
-      white-space: nowrap;
-      min-width: 160px;
-    }
-
-    .cold-divider {
-      width: 1px;
-      height: 36px;
-      background: var(--border);
-      margin: 0 28px;
+    /* Cold panel content */
+    .cold-big {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 2.8vw;
+      line-height: 1;
+      margin-bottom: 4px;
+      transition: color 0.3s;
       flex-shrink: 0;
     }
 
-    .cold-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .cold-meta-label {
+    .cold-sub {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.7vw;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+      font-size: 0.8vw;
       color: var(--muted);
+      flex-shrink: 0;
     }
 
-    .cold-ago {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 2vw;
-      letter-spacing: 0.05em;
-      line-height: 1;
-      transition: color 0.3s;
-    }
-
-    .cold-sessions {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-left: 0;
-    }
-
-    .cold-sessions-label {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.7vw;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .cold-sessions-num {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 2vw;
-      color: var(--ink);
-      line-height: 1;
-    }
-
-    .cold-strip .updated {
-      margin-left: auto;
+    .cold-running-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--ice);
+      box-shadow: 0 0 6px var(--ice);
+      animation: blink 1.5s ease-in-out infinite;
+      margin-right: 6px;
+      vertical-align: middle;
     }
 
     /* Panels */
@@ -207,6 +183,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      min-height: 0;
     }
 
     .panel.alert  { border-top-color: var(--accent); }
@@ -572,6 +549,31 @@
         <div class="updated" id="rom-updated">—</div>
       </div>
 
+      <!-- COLD THERAPY -->
+      <div class="panel" id="cold-panel">
+        <div class="panel-label">// cold therapy</div>
+        <div class="panel-title">Cold Therapy</div>
+
+        <!-- In-progress: countdown timer -->
+        <div id="cold-active" style="display:none">
+          <div style="margin-bottom:10px">
+            <span class="cold-running-dot"></span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:0.75vw;letter-spacing:0.2em;text-transform:uppercase;color:var(--ice)">session in progress</span>
+          </div>
+          <div class="cold-big" id="cold-countdown" style="color:var(--ice)">20:00</div>
+          <div class="cold-sub" id="cold-started">—</div>
+        </div>
+
+        <!-- Idle: last ice info -->
+        <div id="cold-idle">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:0.7vw;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Last ice</div>
+          <div class="cold-big" id="cold-ago">—</div>
+          <div class="cold-sub" id="cold-sessions-num">—</div>
+        </div>
+
+        <div class="updated" id="cold-updated">—</div>
+      </div>
+
       <!-- PT CHECKLIST -->
       <div class="panel" id="pt-panel">
         <div class="panel-label">// daily exercises</div>
@@ -602,25 +604,6 @@
         </div>
 
         <div class="updated" id="appt-updated">—</div>
-      </div>
-
-      <!-- COLD THERAPY STRIP -->
-      <div class="panel cold-strip" id="cold-panel">
-        <div>
-          <div class="panel-label">// cold therapy</div>
-          <div class="panel-title">Cold Therapy</div>
-        </div>
-        <div class="cold-divider"></div>
-        <div class="cold-meta">
-          <div class="cold-meta-label">Last ice</div>
-          <div class="cold-ago" id="cold-ago">—</div>
-        </div>
-        <div class="cold-divider"></div>
-        <div class="cold-sessions">
-          <div class="cold-sessions-label">Sessions today</div>
-          <div class="cold-sessions-num" id="cold-sessions-num">—</div>
-        </div>
-        <div class="updated" id="cold-updated">—</div>
       </div>
 
     </div>
@@ -896,47 +879,87 @@
     }
 
     // ── Cold Therapy ─────────────────────────────────────────
+    let coldCountdownId = null;
+
+    function startColdCountdown(sessionStart) {
+      if (coldCountdownId) return;
+      coldCountdownId = setInterval(() => {
+        const elapsed   = Math.floor((Date.now() - sessionStart) / 1000);
+        const remaining = Math.max(0, 20 * 60 - elapsed);
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        const el = document.getElementById('cold-countdown');
+        if (el) el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        if (remaining <= 0) {
+          clearInterval(coldCountdownId);
+          coldCountdownId = null;
+          localStorage.removeItem('cold_therapy_session_start');
+          loadCold();
+        }
+      }, 1000);
+    }
+
     async function loadCold() {
       try {
         const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
         const data = await res.json();
 
-        const sessions = data.sessions || [];
-        const panel    = document.getElementById('cold-panel');
-        const agoEl    = document.getElementById('cold-ago');
-        const countEl  = document.getElementById('cold-sessions-num');
+        const sessions  = data.sessions || [];
+        const panel     = document.getElementById('cold-panel');
+        const activeEl  = document.getElementById('cold-active');
+        const idleEl    = document.getElementById('cold-idle');
+        const complete  = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
 
-        const complete = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-        countEl.textContent = complete + (complete === 1 ? ' session' : ' sessions');
+        const sessionStart = Number(localStorage.getItem('cold_therapy_session_start') || 0);
+        const isRunning    = sessionStart > 0 && (Date.now() - sessionStart) < 20 * 60 * 1000 + 5000;
 
-        if (sessions.length === 0) {
-          agoEl.textContent  = 'none yet';
-          agoEl.style.color  = 'var(--muted)';
-          panel.style.borderTopColor = 'var(--border-bright)';
-          document.getElementById('cold-updated').textContent = `updated ${timeNow()}`;
-          return;
+        if (isRunning) {
+          activeEl.style.display = '';
+          idleEl.style.display   = 'none';
+          panel.style.borderTopColor = 'var(--ice)';
+
+          const startedTime = new Date(sessionStart).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          document.getElementById('cold-started').textContent =
+            `started at ${startedTime} · ${complete} session${complete !== 1 ? 's' : ''} today`;
+
+          startColdCountdown(sessionStart);
+        } else {
+          if (coldCountdownId) { clearInterval(coldCountdownId); coldCountdownId = null; }
+          activeEl.style.display = 'none';
+          idleEl.style.display   = '';
+
+          const agoEl   = document.getElementById('cold-ago');
+          const countEl = document.getElementById('cold-sessions-num');
+          countEl.textContent = `${complete} session${complete !== 1 ? 's' : ''} today`;
+
+          if (sessions.length === 0) {
+            agoEl.textContent      = 'none yet';
+            agoEl.style.color      = 'var(--muted)';
+            panel.style.borderTopColor = 'var(--ice)';
+          } else {
+            const latest = sessions.reduce((best, s) =>
+              new Date(s.timestamp) > new Date(best.timestamp) ? s : best
+            );
+            const msAgo    = Date.now() - new Date(latest.timestamp).getTime();
+            const totalMin = Math.floor(msAgo / 60000);
+            let agoStr;
+            if (totalMin < 2)       agoStr = 'just now';
+            else if (totalMin < 60) agoStr = `${totalMin}m ago`;
+            else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
+
+            agoEl.textContent = agoStr;
+
+            const hoursAgo = msAgo / 3_600_000;
+            const iceColor = hoursAgo < 3 ? 'var(--ice)' : hoursAgo < 6 ? 'var(--yellow)' : 'var(--accent)';
+            agoEl.style.color          = iceColor;
+            panel.style.borderTopColor = iceColor;
+          }
         }
-
-        const latest = sessions.reduce((best, s) =>
-          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
-        );
-        const msAgo    = Date.now() - new Date(latest.timestamp).getTime();
-        const totalMin = Math.floor(msAgo / 60000);
-        let agoStr;
-        if (totalMin < 2)  agoStr = 'just now';
-        else if (totalMin < 60) agoStr = `${totalMin}m ago`;
-        else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
-
-        agoEl.textContent = agoStr;
-
-        const hoursAgo = msAgo / 3_600_000;
-        const iceColor = hoursAgo < 3 ? 'var(--green)' : hoursAgo < 6 ? 'var(--yellow)' : 'var(--accent)';
-        agoEl.style.color          = iceColor;
-        panel.style.borderTopColor = iceColor;
 
         document.getElementById('cold-updated').textContent = `updated ${timeNow()}`;
       } catch(e) {
-        document.getElementById('cold-ago').textContent = '//err';
+        const el = document.getElementById('cold-ago');
+        if (el) el.textContent = '// err';
       }
     }
 
