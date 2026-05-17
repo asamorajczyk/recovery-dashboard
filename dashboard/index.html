@@ -85,29 +85,17 @@
       text-transform: uppercase;
     }
 
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .header-clock {
+      text-align: right;
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       color: var(--muted);
-      letter-spacing: 0.1em;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      line-height: 1.4;
     }
 
-    .status-dot::before {
-      content: '';
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: blink 2.5s ease-in-out infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.35; }
-    }
+    #hclock-time { color: var(--ink); }
 
     /* Send request button */
     .request-card {
@@ -170,23 +158,6 @@
 
     .notify-toast.success { background: var(--green-dim); color: var(--green); border: 1px solid #166534; display: block; }
     .notify-toast.error   { background: rgba(224,92,26,0.1); color: var(--accent); border: 1px solid var(--accent-dim); display: block; }
-
-    /* Clock */
-    .clock-bar {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 4px;
-    }
-
-    .clock-bar span {
-      color: var(--ink);
-      font-size: 13px;
-    }
 
     /* Tool cards */
     a.tool-card {
@@ -311,17 +282,31 @@
         <h1>RECOVERY <span>HQ</span></h1>
         <p>Jessie's dashboard</p>
       </div>
-      <div class="status-dot">LIVE</div>
+      <div class="header-clock">
+        <div id="hclock-day">—</div>
+        <div id="hclock-date">—</div>
+        <div id="hclock-time">—</div>
+      </div>
     </div>
-
-    <div class="clock-bar" id="clock-bar">—</div>
 
     <!-- Send request -->
     <div class="request-card">
-      <textarea id="note" placeholder="what do you need? (optional)"></textarea>
-      <button id="send-btn" onclick="sendAlert()">&#9654;&nbsp; Send Request</button>
+      <textarea id="note" placeholder="send a message directly to Ashley (optional)"></textarea>
+      <button id="send-btn" onclick="sendAlert()">Send Request</button>
       <div class="notify-toast" id="notify-toast"></div>
     </div>
+
+    <!-- Milestones -->
+    <a class="tool-card" href="../milestones/index.html" id="milestone-card">
+      <div class="tool-top">
+        <div class="tool-name-group">
+          <i data-lucide="trophy" class="card-icon"></i>
+          <div class="tool-name">Milestones</div>
+        </div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="milestone-blurb">loading...</div>
+    </a>
 
     <!-- Appointments -->
     <a class="tool-card" href="../appointments/index.html" id="appt-card">
@@ -420,12 +405,13 @@
 
     // ── Clock ────────────────────────────────────────────────
     function updateClock() {
-      const now  = new Date();
-      const day  = now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-      const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase();
-      const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      document.getElementById('clock-bar').innerHTML =
-        `${day} &middot; ${date} &middot; <span>${time}</span>`;
+      const now = new Date();
+      document.getElementById('hclock-day').textContent =
+        now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      document.getElementById('hclock-date').textContent =
+        now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase();
+      document.getElementById('hclock-time').textContent =
+        now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
     updateClock();
     setInterval(updateClock, 30_000);
@@ -484,14 +470,14 @@
         document.getElementById('note').value = '';
 
         setTimeout(() => {
-          btn.innerHTML = '&#9654;&nbsp; Send Request';
+          btn.innerHTML = 'Send Request';
           btn.disabled = false;
           toast.className = 'notify-toast';
           cooldown = false;
         }, 10000);
 
       } catch (err) {
-        btn.innerHTML = '&#9654;&nbsp; Send Request';
+        btn.innerHTML = 'Send Request';
         btn.disabled = false;
         toast.textContent = '// ERR: failed — tap to retry';
         toast.className = 'notify-toast error';
@@ -688,6 +674,31 @@
       }
     }
 
+    async function loadMilestoneStatus() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getMilestones`);
+        const data = await res.json();
+        const blurb = document.getElementById('milestone-blurb');
+        const card  = document.getElementById('milestone-card');
+        if (!data.length) {
+          blurb.textContent = 'no milestones yet — tap to add';
+          card.style.borderLeftColor = 'var(--border-bright)';
+          return;
+        }
+        const total    = data.length;
+        const achieved = data.filter(m => m.achieved_date).length;
+        const latest   = data.filter(m => m.achieved_date).sort((a, b) => b.achieved_date.localeCompare(a.achieved_date))[0];
+        const pct      = Math.round(achieved / total * 100);
+        blurb.innerHTML = achieved === total
+          ? `<span style="color:var(--green)">&#10003; all ${total} milestones achieved!</span>`
+          : `${achieved} / ${total} achieved${latest ? `<br>last: ${latest.name}` : ''}`;
+        card.style.borderLeftColor = pct === 100 ? 'var(--green)' : achieved > 0 ? 'var(--yellow)' : 'var(--border-bright)';
+      } catch (err) {
+        document.getElementById('milestone-blurb').textContent = '// could not load';
+      }
+    }
+
+    loadMilestoneStatus();
     loadApptStatus();
     loadMedStatus();
     loadPtStatus();

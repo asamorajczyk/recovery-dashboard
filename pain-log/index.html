@@ -250,10 +250,51 @@
       border-radius: 2px;
     }
 
+    /* Note field */
+    .note-wrap {
+      margin-bottom: 14px;
+    }
+
+    .note-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--border-bright);
+      margin-bottom: 6px;
+    }
+
+    .note-field {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      outline: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--ink);
+      padding: 10px 12px;
+      resize: none;
+      height: 58px;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+    }
+
+    .note-field:focus { border-color: var(--accent); }
+    .note-field::placeholder { color: var(--border); }
+
     .no-entries {
       font-family: 'Share Tech Mono', monospace;
       font-size: 11px;
       color: var(--border-bright);
+    }
+
+    .log-note {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.5;
     }
 
     .footer {
@@ -275,6 +316,11 @@
         <p>How are you feeling?</p>
       </div>
       <div class="status-dot">LIVE</div>
+    </div>
+
+    <div class="note-wrap">
+      <div class="note-label">// note (optional)</div>
+      <textarea class="note-field" id="note-field" placeholder="describe what's going on..."></textarea>
     </div>
 
     <div class="pain-grid" id="pain-grid">
@@ -337,15 +383,18 @@
 
       const btns  = document.querySelectorAll('.pain-btn');
       const toast = document.getElementById('toast');
+      const note  = document.getElementById('note-field').value.trim();
       btns.forEach(b => b.classList.add('loading'));
       toast.className = 'toast';
 
       try {
-        const res  = await fetch(`${SCRIPT_URL}?action=logPain&score=${score}`);
+        const url = `${SCRIPT_URL}?action=logPain&score=${score}&notes=${encodeURIComponent(note)}`;
+        const res  = await fetch(url);
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
 
+        document.getElementById('note-field').value = '';
         toast.textContent = `// OK: logged ${score}/10`;
         toast.className = 'toast success';
         await loadToday();
@@ -380,9 +429,14 @@
         [...data.entries].reverse().forEach(entry => {
           const row = document.createElement('div');
           row.className = 'log-row';
+          row.style.flexDirection = 'column';
+          row.style.alignItems = 'flex-start';
           row.innerHTML = `
-            <div class="log-time">${fmtTime(entry.timestamp)}</div>
-            <div class="log-score" style="background:${scoreColor(entry.score)}22;color:${scoreColor(entry.score)}">${entry.score}/10</div>
+            <div style="display:flex;align-items:center;gap:12px;width:100%">
+              <div class="log-time">${fmtTime(entry.timestamp)}</div>
+              <div class="log-score" style="background:${scoreColor(entry.score)}22;color:${scoreColor(entry.score)}">${entry.score}/10</div>
+            </div>
+            ${entry.notes ? `<div class="log-note">${entry.notes}</div>` : ''}
           `;
           list.appendChild(row);
         });

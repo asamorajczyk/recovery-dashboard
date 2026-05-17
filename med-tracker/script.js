@@ -19,6 +19,9 @@ function doGet(e) {
     else if (action === 'getLastDose')    result = getLastDose(e.parameter);
     else if (action === 'logPain')        result = logPain(e.parameter);
     else if (action === 'getTodayPain')      result = getTodayPain();
+    else if (action === 'getMilestones')     result = getMilestones();
+    else if (action === 'markMilestone')     result = markMilestone(e.parameter);
+    else if (action === 'unmarkMilestone')   result = unmarkMilestone(e.parameter);
     else if (action === 'logColdTherapy')    result = logColdTherapy(e.parameter);
     else if (action === 'getColdTherapyLog') result = getColdTherapyLog();
     else result = { error: 'Unknown action: ' + action };
@@ -261,10 +264,11 @@ function getLastDose(params) {
 function logPain(params) {
   const score = Number(params.score);
   if (!score || score < 1 || score > 10) return { error: 'score must be 1-10' };
+  const notes = params.notes ? String(params.notes) : '';
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Pain Log');
   const tz = Session.getScriptTimeZone();
   const timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
-  sheet.appendRow([timestamp, score]);
+  sheet.appendRow([timestamp, score, notes]);
   return { success: true, timestamp, score };
 }
 
@@ -280,7 +284,7 @@ function getTodayPain() {
     if (!row[0]) continue;
     const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
     if (rowDate === todayStr) {
-      entries.push({ timestamp: String(row[0]), score: Number(row[1]) || 0 });
+      entries.push({ timestamp: String(row[0]), score: Number(row[1]) || 0, notes: String(row[2] || '') });
     }
   }
   const average = entries.length
@@ -329,6 +333,62 @@ function getColdTherapyLog() {
   }
 
   return { sessions };
+}
+
+function getMilestones() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Milestones');
+  const data  = sheet.getDataRange().getValues();
+  const tz    = Session.getScriptTimeZone();
+  const milestones = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue;
+    milestones.push({
+      id:            String(row[0]),
+      name:          String(row[1]),
+      category:      String(row[2] || ''),
+      target_date:   row[3] ? Utilities.formatDate(new Date(row[3]), tz, 'yyyy-MM-dd') : null,
+      achieved_date: row[4] ? Utilities.formatDate(new Date(row[4]), tz, 'yyyy-MM-dd') : null,
+      notes:         String(row[5] || '')
+    });
+  }
+
+  return milestones;
+}
+
+function markMilestone(params) {
+  const id = params.id;
+  if (!id) return { error: 'id required' };
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Milestones');
+  const data  = sheet.getDataRange().getValues();
+  const tz    = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === id) {
+      sheet.getRange(i + 1, 5).setValue(today);
+      return { success: true, id, achieved_date: today };
+    }
+  }
+  return { error: 'Milestone not found: ' + id };
+}
+
+function unmarkMilestone(params) {
+  const id = params.id;
+  if (!id) return { error: 'id required' };
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Milestones');
+  const data  = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === id) {
+      sheet.getRange(i + 1, 5).setValue('');
+      return { success: true, id };
+    }
+  }
+  return { error: 'Milestone not found: ' + id };
 }
 
 function getTodayPt() {

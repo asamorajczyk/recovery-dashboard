@@ -766,10 +766,10 @@ document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
         const exercises = await exRes.json();
         const todaySets = await ptRes.json();
 
-        const total    = exercises.length;
-        const complete = exercises.filter(ex => (todaySets[ex.id] || 0) >= ex.sets).length;
-        const allDone  = complete === total && total > 0;
-        const pct      = total > 0 ? Math.round((complete / total) * 100) : 0;
+        const totalSets = exercises.reduce((s, ex) => s + ex.sets, 0);
+        const doneSets  = exercises.reduce((s, ex) => s + Math.min(todaySets[ex.id] || 0, ex.sets), 0);
+        const allDone   = doneSets >= totalSets && totalSets > 0;
+        const pct       = totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
 
         const list = document.getElementById('ex-list');
         list.innerHTML = '';
@@ -794,11 +794,11 @@ document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
         // Overall fill bar
         const fillBar   = document.getElementById('pt-fill-bar');
         fillBar.style.width      = pct + '%';
-        fillBar.style.background = allDone ? 'var(--green)' : complete > 0 ? 'var(--accent)' : 'var(--border-bright)';
+        fillBar.style.background = allDone ? 'var(--green)' : doneSets > 0 ? 'var(--accent)' : 'var(--border-bright)';
         document.getElementById('pt-fill-label').textContent =
-          `${complete} of ${total} exercises complete`;
+          `${doneSets} of ${totalSets} sets complete`;
 
-        document.getElementById('pt-panel').className = allDone ? 'panel good' : complete > 0 ? 'panel warn' : 'panel';
+        document.getElementById('pt-panel').className = allDone ? 'panel good' : doneSets > 0 ? 'panel warn' : 'panel';
         document.getElementById('pt-updated').textContent = `updated ${timeNow()}`;
       } catch(e) {}
     }
