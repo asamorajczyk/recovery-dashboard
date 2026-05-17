@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recovery Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,6 +23,7 @@
       --green-dim: #14532d;
       --yellow: #f59e0b;
       --red: #ef4444;
+      --ice: #38bdf8;
     }
 
     body {
@@ -209,8 +211,21 @@
     .tool-top {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: center;
       margin-bottom: 6px;
+    }
+
+    .tool-name-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-icon {
+      width: 15px;
+      height: 15px;
+      stroke: var(--muted);
+      flex-shrink: 0;
     }
 
     .tool-name {
@@ -238,6 +253,42 @@
     .tool-blurb .soon  { color: var(--yellow); }
     .tool-blurb .ok    { color: var(--green); }
     .tool-blurb .apap  { color: var(--border-bright); margin-top: 2px; }
+
+    /* 2-column square card grid */
+    .card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .card-grid a.tool-card {
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+    }
+
+    .card-grid .tool-top {
+      margin-bottom: 0;
+    }
+
+    .card-grid .tool-name {
+      font-size: 13px;
+      letter-spacing: 1.5px;
+    }
+
+    .card-grid .card-icon {
+      width: 13px;
+      height: 13px;
+    }
+
+    .card-grid .tool-arrow {
+      display: none;
+    }
+
+    .card-grid .tool-blurb {
+      font-size: 10px;
+      line-height: 1.45;
+    }
 
     /* Footer */
     .footer {
@@ -275,7 +326,10 @@
     <!-- Appointments -->
     <a class="tool-card" href="../appointments/index.html" id="appt-card">
       <div class="tool-top">
-        <div class="tool-name">Appointments</div>
+        <div class="tool-name-group">
+          <i data-lucide="calendar" class="card-icon"></i>
+          <div class="tool-name">Appointments</div>
+        </div>
         <div class="tool-arrow">&#9654;</div>
       </div>
       <div class="tool-blurb" id="appt-blurb">loading...</div>
@@ -284,55 +338,71 @@
     <!-- Med Tracker -->
     <a class="tool-card" href="../med-tracker/index.html" id="med-card">
       <div class="tool-top">
-        <div class="tool-name">Med Tracker</div>
+        <div class="tool-name-group">
+          <i data-lucide="pill" class="card-icon"></i>
+          <div class="tool-name">Med Tracker</div>
+        </div>
         <div class="tool-arrow">&#9654;</div>
       </div>
       <div class="tool-blurb" id="med-blurb">loading...</div>
     </a>
 
+    <!-- PT + ROM (2-col grid) -->
+    <div class="card-grid">
+      <a class="tool-card" href="../pt-checklist/index.html" id="pt-card">
+        <div class="tool-top">
+          <div class="tool-name-group">
+            <i data-lucide="dumbbell" class="card-icon"></i>
+            <div class="tool-name">PT Checklist</div>
+          </div>
+        </div>
+        <div class="tool-blurb" id="pt-blurb">tap to open</div>
+      </a>
+
+      <a class="tool-card" href="../rom-log/index.html" id="rom-card">
+        <div class="tool-top">
+          <div class="tool-name-group">
+            <i data-lucide="rotate-ccw" class="card-icon"></i>
+            <div class="tool-name">ROM Log</div>
+          </div>
+        </div>
+        <div class="tool-blurb" id="rom-blurb">loading...</div>
+      </a>
+    </div>
+
+    <!-- Pain + Cold (2-col grid) -->
+    <div class="card-grid">
+      <a class="tool-card" href="../pain-log/index.html" id="pain-card">
+        <div class="tool-top">
+          <div class="tool-name-group">
+            <i data-lucide="thermometer" class="card-icon"></i>
+            <div class="tool-name">Pain Log</div>
+          </div>
+        </div>
+        <div class="tool-blurb" id="pain-blurb">loading...</div>
+      </a>
+
+      <a class="tool-card" href="../cold-therapy/index.html" id="cold-card">
+        <div class="tool-top">
+          <div class="tool-name-group">
+            <i data-lucide="snowflake" class="card-icon"></i>
+            <div class="tool-name">Cold Therapy</div>
+          </div>
+        </div>
+        <div class="tool-blurb" id="cold-blurb">loading...</div>
+      </a>
+    </div>
+
     <!-- BP Log -->
     <a class="tool-card" href="../BP Log/index.html">
       <div class="tool-top">
-        <div class="tool-name">BP Log</div>
+        <div class="tool-name-group">
+          <i data-lucide="heart-pulse" class="card-icon"></i>
+          <div class="tool-name">BP Log</div>
+        </div>
         <div class="tool-arrow">&#9654;</div>
       </div>
       <div class="tool-blurb">tap to log blood pressure reading</div>
-    </a>
-
-    <!-- PT Checklist -->
-    <a class="tool-card" href="../pt-checklist/index.html" id="pt-card">
-      <div class="tool-top">
-        <div class="tool-name">PT Checklist</div>
-        <div class="tool-arrow">&#9654;</div>
-      </div>
-      <div class="tool-blurb" id="pt-blurb">tap to open</div>
-    </a>
-
-    <!-- ROM Log -->
-    <a class="tool-card" href="../rom-log/index.html" id="rom-card">
-      <div class="tool-top">
-        <div class="tool-name">ROM Log</div>
-        <div class="tool-arrow">&#9654;</div>
-      </div>
-      <div class="tool-blurb" id="rom-blurb">loading...</div>
-    </a>
-
-    <!-- Pain Log -->
-    <a class="tool-card" href="../pain-log/index.html" id="pain-card">
-      <div class="tool-top">
-        <div class="tool-name">Pain Log</div>
-        <div class="tool-arrow">&#9654;</div>
-      </div>
-      <div class="tool-blurb" id="pain-blurb">loading...</div>
-    </a>
-
-    <!-- Cold Therapy -->
-    <a class="tool-card" href="../cold-therapy/index.html" id="cold-card">
-      <div class="tool-top">
-        <div class="tool-name">Cold Therapy</div>
-        <div class="tool-arrow">&#9654;</div>
-      </div>
-      <div class="tool-blurb" id="cold-blurb">loading...</div>
     </a>
 
     <div class="footer">
@@ -526,18 +596,18 @@
         const exercises = await exRes.json();
         const todaySets = await ptRes.json();
 
-        const total    = exercises.length;
-        const complete = exercises.filter(ex => (todaySets[ex.id] || 0) >= ex.sets).length;
-        const allDone  = complete === total && total > 0;
+        const totalSets = exercises.reduce((s, ex) => s + ex.sets, 0);
+        const doneSets  = exercises.reduce((s, ex) => s + Math.min(todaySets[ex.id] || 0, ex.sets), 0);
+        const allDone   = doneSets >= totalSets && totalSets > 0;
 
         const blurb = document.getElementById('pt-blurb');
         const card  = document.getElementById('pt-card');
 
         blurb.innerHTML = allDone
-          ? `<span style="color:var(--green)">&#10003; all ${total} exercises complete</span>`
-          : `${complete} / ${total} exercises complete today`;
+          ? `<span style="color:var(--green)">&#10003; all ${totalSets} sets done</span>`
+          : `${doneSets} / ${totalSets} sets today`;
 
-        card.style.borderLeftColor = allDone ? 'var(--green)' : complete > 0 ? 'var(--yellow)' : 'var(--border-bright)';
+        card.style.borderLeftColor = allDone ? 'var(--green)' : doneSets > 0 ? 'var(--yellow)' : 'var(--border-bright)';
       } catch (err) {
         document.getElementById('pt-blurb').textContent = '// could not load';
       }
@@ -576,7 +646,7 @@
         }
         const avg   = data.average;
         const color = PAIN_COLORS[Math.min(10, Math.max(1, Math.round(avg)))] || 'var(--accent)';
-        blurb.innerHTML = `<span style="color:${color}">${avg}/10 avg today</span> &middot; ${data.entries.length} entr${data.entries.length === 1 ? 'y' : 'ies'}`;
+        blurb.innerHTML = `<span style="color:${color}">${avg}/10 avg today</span><br>${data.entries.length} entr${data.entries.length === 1 ? 'y' : 'ies'}`;
         card.style.borderLeftColor = avg >= 7 ? 'var(--accent)' : avg >= 4 ? 'var(--yellow)' : 'var(--green)';
       } catch (err) {
         document.getElementById('pain-blurb').textContent = '// could not load';
@@ -594,7 +664,7 @@
 
         if (sessions.length === 0) {
           blurb.textContent = 'no sessions today — tap to start';
-          card.style.borderLeftColor = 'var(--border-bright)';
+          card.style.borderLeftColor = 'var(--ice)';
           return;
         }
 
@@ -609,10 +679,9 @@
         else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
 
         const complete = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-        blurb.textContent = `last ice: ${agoStr} · ${complete} session${complete !== 1 ? 's' : ''} today`;
+        blurb.innerHTML = `last ice: ${agoStr}<br>${complete} session${complete !== 1 ? 's' : ''} today`;
 
-        const hoursAgo = msAgo / 3_600_000;
-        card.style.borderLeftColor = hoursAgo < 3 ? 'var(--green)' : hoursAgo < 6 ? 'var(--yellow)' : 'var(--accent)';
+        card.style.borderLeftColor = 'var(--ice)';
 
       } catch (e) {
         document.getElementById('cold-blurb').textContent = 'tap to start 20-min icing session';
@@ -631,6 +700,8 @@
     setInterval(loadRomStatus, 300_000);
     setInterval(loadPainStatus, 300_000);
     setInterval(loadColdTherapyStatus, 300_000);
+
+    lucide.createIcons();
   </script>
 </body>
 </html>
