@@ -664,7 +664,7 @@
         const totalMrem = totalMins % 60;
         const totalStr  = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${totalMins}m`;
 
-        blurb.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px"><span>last ice: ${agoStr}</span><div style="text-align:right"><div style="color:var(--ice)">${complete} session${complete !== 1 ? 's' : ''} today</div><div>${totalStr} total</div></div></div>`;
+        blurb.innerHTML = `last ice: ${agoStr}<br>${complete} session${complete !== 1 ? 's' : ''} today &middot; ${totalStr}`;
 
         card.style.borderLeftColor = 'var(--ice)';
 

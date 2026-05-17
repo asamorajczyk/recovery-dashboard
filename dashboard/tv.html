@@ -187,6 +187,7 @@
     #rom-panel       { flex: 1; }
     #cold-panel      { flex: 0 0 auto; border-top-color: var(--ice); }
     #appt-panel      { flex: 2; }
+    #pt-panel .fill-section { flex: 0 0 auto; }
 
     /* Cold panel content */
     .cold-big {
@@ -362,15 +363,19 @@
     .ex-list {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
       margin-top: 8px;
-      flex-shrink: 0;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .ex-item {
       display: flex;
       align-items: center;
       gap: 10px;
+      flex: 1;
+      min-height: 0;
     }
 
     .ex-check {
@@ -485,51 +490,103 @@
     .milestone-list {
       display: flex;
       flex-direction: column;
-      gap: 5px;
       margin-top: 6px;
       overflow: hidden;
+      flex: 1;
     }
 
     .milestone-item {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
     }
 
-    .milestone-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
+    .ms-date-col {
+      width: 3.5vw;
       flex-shrink: 0;
-      background: var(--border-bright);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      padding-right: 0.55vw;
+      padding-top: 0.25vw;
     }
 
-    .milestone-dot.done  { background: var(--green); box-shadow: 0 0 5px var(--green); }
-    .milestone-dot.today { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: blink 2s ease-in-out infinite; }
+    .ms-day {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85vw;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+    }
 
-    .milestone-name {
-      font-size: 1vw;
+    .ms-month {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.5vw;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 0.1vw;
+    }
+
+    .ms-spine {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 1.1vw;
+      flex-shrink: 0;
+    }
+
+    .ms-spine-top {
+      width: 0.14vw;
+      height: 0.45vw;
+      flex-shrink: 0;
+      border-radius: 1px;
+    }
+
+    .ms-dot {
+      width: 0.65vw;
+      height: 0.65vw;
+      border-radius: 50%;
+      border: 0.13vw solid var(--border-bright);
+      background: var(--bg);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .ms-spine-bottom {
+      width: 0.14vw;
+      flex: 1;
+      border-radius: 1px;
+    }
+
+    .ms-body {
+      flex: 1;
+      min-width: 0;
+      padding: 0.2vw 0 0.4vw 0.55vw;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .ms-name {
+      font-size: 0.9vw;
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      flex: 1;
+      line-height: 1;
     }
 
-    .milestone-name.done  { color: var(--muted); }
-    .milestone-name.today { color: var(--accent); }
-
-    .milestone-date {
+    .ms-rel {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.75vw;
-      color: var(--border-bright);
-      flex-shrink: 0;
+      font-size: 0.58vw;
+      margin-top: 0.15vw;
+      letter-spacing: 0.05em;
     }
-
-    .milestone-date.done  { color: var(--green-dim); }
-    .milestone-date.today { color: var(--accent); }
 
     /* ── Page system ─────────────────────────────────────── */
     .pages { min-height: 0; display: grid; }
@@ -751,8 +808,13 @@
           </div>
           <div id="cold-idle">
             <div style="font-family:'Share Tech Mono',monospace;font-size:0.7vw;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Last ice</div>
-            <div class="cold-big" id="cold-ago">—</div>
-            <div class="cold-sub" id="cold-sessions-num">—</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1vw">
+              <div class="cold-big" id="cold-ago">—</div>
+              <div style="text-align:right;padding-bottom:0.2vw">
+                <div class="cold-sub" id="cold-sessions-num" style="color:var(--ice)">—</div>
+                <div class="cold-sub" id="cold-total-time">—</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1065,22 +1127,72 @@ document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
           return;
         }
 
-        list.innerHTML = '';
-        milestones.forEach(m => {
-          const isPast  = m.date && m.date < todayStr;
-          const isToday = m.date === todayStr;
-          const state   = isPast ? 'done' : isToday ? 'today' : '';
+        const withDate = milestones.filter(m => m.date).sort((a, b) => a.date.localeCompare(b.date));
+        const noDate   = milestones.filter(m => !m.date);
+        const sorted   = [...withDate, ...noDate];
+        const upcoming = withDate.filter(m => m.date >= todayStr);
 
-          const fmtDate = m.date
-            ? new Date(m.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-            : '';
+        function msColor(m) {
+          if (!m.date) return 'var(--border-bright)';
+          if (m.date < todayStr) return 'var(--green)';
+          const today = new Date(); today.setHours(0,0,0,0);
+          const days  = Math.round((new Date(m.date + 'T00:00:00') - today) / 86400000);
+          if (days <= 7)  return 'var(--accent)';
+          if (days <= 21) return 'var(--yellow)';
+          return 'var(--border-bright)';
+        }
+
+        function fmtRel(m) {
+          if (!m.date) return '';
+          const today = new Date(); today.setHours(0,0,0,0);
+          const days  = Math.round((new Date(m.date + 'T00:00:00') - today) / 86400000);
+          if (days === 0)  return 'today';
+          if (days === 1)  return 'tomorrow';
+          if (days === -1) return 'yesterday';
+          if (days > 0)    return `in ${days}d`;
+          return `${Math.abs(days)}d ago`;
+        }
+
+        const colors = sorted.map(m => msColor(m));
+        list.innerHTML = '';
+
+        sorted.forEach((m, i) => {
+          const isFirst  = i === 0;
+          const isLast   = i === sorted.length - 1;
+          const isPast   = m.date && m.date < todayStr;
+          const isNext   = upcoming.length > 0 && m === upcoming[0];
+          const color    = colors[i];
+          const nextColor = isLast ? 'transparent' : colors[i + 1];
+
+          const dotStyle = isPast
+            ? `background:${color};border-color:${color}`
+            : isNext
+              ? `background:var(--bg);border-color:${color};box-shadow:0 0 5px ${color}`
+              : `background:var(--bg);border-color:${color}`;
+
+          const d        = m.date ? new Date(m.date + 'T00:00:00') : null;
+          const dayNum   = d ? d.getDate() : '—';
+          const monthStr = d ? d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
+          const dayStyle = isPast ? 'color:var(--muted)' : '';
+          const nameStyle = isPast ? 'color:var(--muted)' : '';
+          const rel      = fmtRel(m);
 
           const el = document.createElement('div');
           el.className = 'milestone-item';
           el.innerHTML = `
-            <div class="milestone-dot ${state}"></div>
-            <div class="milestone-name ${state}">${m.name}</div>
-            <div class="milestone-date ${state}">${isPast ? '&#10003; ' : ''}${fmtDate}</div>
+            <div class="ms-date-col">
+              <div class="ms-day" style="${dayStyle}">${dayNum}</div>
+              <div class="ms-month">${monthStr}</div>
+            </div>
+            <div class="ms-spine">
+              <div class="ms-spine-top" style="background:${isFirst ? 'transparent' : color}"></div>
+              <div class="ms-dot" style="${dotStyle}"></div>
+              <div class="ms-spine-bottom" style="background:${isLast ? 'transparent' : nextColor}"></div>
+            </div>
+            <div class="ms-body">
+              <div class="ms-name" style="${nameStyle}">${m.name}</div>
+              ${rel ? `<div class="ms-rel" style="color:${isPast ? 'var(--green)' : color}">${rel}</div>` : ''}
+            </div>
           `;
           list.appendChild(el);
         });
@@ -1157,9 +1269,18 @@ document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
           activeEl.style.display = 'none';
           idleEl.style.display   = '';
 
-          const agoEl   = document.getElementById('cold-ago');
-          const countEl = document.getElementById('cold-sessions-num');
+          const agoEl      = document.getElementById('cold-ago');
+          const countEl    = document.getElementById('cold-sessions-num');
+          const totalTimeEl = document.getElementById('cold-total-time');
+
+          const totalSec   = sessions.reduce((sum, s) => sum + (Number(s.duration_sec) || 0), 0);
+          const totalMins  = Math.floor(totalSec / 60);
+          const totalH     = Math.floor(totalMins / 60);
+          const totalMrem  = totalMins % 60;
+          const totalStr   = totalH > 0 ? `${totalH}h ${totalMrem}m total` : `${totalMins}m total`;
+
           countEl.textContent = `${complete} session${complete !== 1 ? 's' : ''} today`;
+          totalTimeEl.textContent = sessions.length > 0 ? totalStr : '';
 
           if (sessions.length === 0) {
             agoEl.textContent      = 'none yet';
