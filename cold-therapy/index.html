@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cold Therapy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --ice: #38bdf8;
+      --ice-dim: #0c4a6e;
+      --ice-glow: rgba(56,189,248,0.15);
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header h1 span { color: var(--ice); }
+
+    .header p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .back-link {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .back-link:active { color: var(--ink); }
+
+    /* Timer block */
+    .timer-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--ice);
+      border-radius: 2px;
+      padding: 28px 20px 24px;
+      margin-bottom: 12px;
+      text-align: center;
+      transition: border-top-color 0.3s, box-shadow 0.3s;
+    }
+
+    .timer-block.running {
+      box-shadow: 0 0 24px rgba(56,189,248,0.12);
+      animation: ice-pulse 3s ease-in-out infinite;
+    }
+
+    .timer-block.done {
+      border-top-color: var(--green);
+      box-shadow: 0 0 20px rgba(34,197,94,0.1);
+    }
+
+    @keyframes ice-pulse {
+      0%, 100% { box-shadow: 0 0 16px rgba(56,189,248,0.08); }
+      50%       { box-shadow: 0 0 32px rgba(56,189,248,0.2); }
+    }
+
+    .timer-status-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .timer-display {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 76px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: var(--ice);
+      line-height: 1;
+      margin-bottom: 8px;
+      transition: color 0.3s;
+    }
+
+    .timer-display.done  { color: var(--green); }
+    .timer-display.idle  { opacity: 0.6; }
+
+    .timer-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .last-ice {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--border-bright);
+      margin-top: 6px;
+      min-height: 14px;
+    }
+
+    /* Buttons */
+    #action-btn {
+      display: block;
+      width: 100%;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 20px;
+      cursor: pointer;
+      min-height: 68px;
+      transition: background 0.2s, transform 0.08s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #action-btn:active { transform: scale(0.99); }
+
+    #action-btn.start { background: var(--ice); color: #0a0a0a; }
+    #action-btn.stop  { background: #1e2023; color: var(--accent); border: 1px solid var(--accent); }
+    #action-btn.again { background: var(--green-dim); color: var(--green); border: 1px solid #166534; }
+
+    /* Progress bar */
+    .progress-bg {
+      height: 3px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--ice);
+      border-radius: 2px;
+      width: 100%;
+      transition: width 1s linear, background 0.3s;
+    }
+
+    .progress-bar.done { background: var(--green); width: 0%; }
+
+    /* Toast */
+    .toast {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      border: 1px solid transparent;
+    }
+    .toast.success { display: block; background: rgba(34,197,94,0.08); color: var(--green); border-color: #166534; }
+    .toast.error   { display: block; background: rgba(224,92,26,0.08); color: var(--accent); border-color: #7a2f08; }
+
+    /* Session log */
+    .section-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--border-bright);
+      margin-bottom: 10px;
+      margin-top: 20px;
+    }
+
+    .log-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .log-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    .log-time {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      flex: 1;
+    }
+
+    .log-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      border-radius: 2px;
+    }
+
+    .log-badge.complete { background: rgba(34,197,94,0.1); color: var(--green); }
+    .log-badge.stopped  { background: rgba(107,114,128,0.1); color: var(--muted); }
+
+    .log-duration {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--border-bright);
+      min-width: 42px;
+      text-align: right;
+    }
+
+    .no-entries {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--border-bright);
+    }
+
+    /* Session count */
+    .session-count {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+
+    .session-count span { color: var(--ice); }
+
+    .footer {
+      margin-top: 24px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <div class="header">
+      <div>
+        <h1>COLD <span>THERAPY</span></h1>
+        <p>20-minute icing session</p>
+      </div>
+      <a class="back-link" href="../dashboard/index.html">&#9664; back</a>
+    </div>
+
+    <!-- Timer card -->
+    <div class="timer-block" id="timer-block">
+      <div class="timer-status-label" id="status-label">// ready</div>
+      <div class="timer-display idle" id="timer-display">20:00</div>
+      <div class="timer-sub" id="timer-sub">tap start to begin</div>
+      <div class="last-ice" id="last-ice"></div>
+      <div class="progress-bg">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <button id="action-btn" class="start" onclick="handleAction()">&#10052;&nbsp; Start Session</button>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Today's sessions -->
+    <div class="section-label" id="session-count-label">// today's sessions</div>
+    <div class="log-list" id="log-list">
+      <div class="no-entries">loading...</div>
+    </div>
+
+    <div class="footer" id="footer">—</div>
+
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+    const SESSION_SECONDS = 20 * 60; // change this to adjust session length
+
+    let state      = 'idle';   // idle | running | done
+    let remaining  = SESSION_SECONDS;
+    let elapsed    = 0;
+    let tickId     = null;
+    let sessionId  = null;     // timestamp string set when session starts
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function fmtSeconds(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function fmtTime(ts) {
+      return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function fmtAgo(ms) {
+      const totalMin = Math.floor(ms / 60000);
+      if (totalMin < 2)  return 'just now';
+      if (totalMin < 60) return `${totalMin}m ago`;
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      return m === 0 ? `${h}h ago` : `${h}h ${m}m ago`;
+    }
+
+    function setDisplay(seconds, cls) {
+      const el = document.getElementById('timer-display');
+      el.textContent = fmtSeconds(seconds);
+      el.className = 'timer-display ' + (cls || '');
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + type;
+      if (type === 'success') setTimeout(() => { t.className = 'toast'; }, 5000);
+    }
+
+    // ── Audio alert ───────────────────────────────────────────────
+    function playDoneBeeps() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.35, 0.7].forEach(delay => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = 880;
+          gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.25);
+        });
+      } catch (e) { /* audio not available */ }
+    }
+
+    // ── Timer tick ────────────────────────────────────────────────
+    function tick() {
+      remaining--;
+      elapsed++;
+
+      const pct = ((SESSION_SECONDS - remaining) / SESSION_SECONDS) * 100;
+      document.getElementById('progress-bar').style.width = (100 - pct) + '%';
+      setDisplay(remaining, '');
+
+      if (remaining <= 0) {
+        clearInterval(tickId);
+        tickId = null;
+        transitionDone();
+      }
+    }
+
+    // ── State transitions ─────────────────────────────────────────
+    function transitionRunning() {
+      state     = 'running';
+      remaining = SESSION_SECONDS;
+      elapsed   = 0;
+      sessionId = new Date().toISOString();
+
+      document.getElementById('timer-block').className  = 'timer-block running';
+      document.getElementById('status-label').textContent = '// session active';
+      document.getElementById('timer-sub').textContent  = 'keep ice in place';
+      document.getElementById('last-ice').textContent   = '';
+      document.getElementById('progress-bar').className = 'progress-bar';
+      document.getElementById('progress-bar').style.width = '100%';
+
+      setDisplay(SESSION_SECONDS, '');
+
+      const btn = document.getElementById('action-btn');
+      btn.className   = 'stop';
+      btn.innerHTML   = '&#9646;&#9646;&nbsp; Stop Session';
+
+      tickId = setInterval(tick, 1000);
+    }
+
+    function transitionDone() {
+      state = 'done';
+
+      document.getElementById('timer-block').className  = 'timer-block done';
+      document.getElementById('status-label').textContent = '// session complete!';
+      document.getElementById('timer-sub').textContent  = 'great work — remove ice';
+      document.getElementById('progress-bar').className = 'progress-bar done';
+
+      setDisplay(0, 'done');
+      playDoneBeeps();
+
+      const btn = document.getElementById('action-btn');
+      btn.className = 'again';
+      btn.innerHTML = '&#10052;&nbsp; Start Another';
+
+      logSession('complete', SESSION_SECONDS);
+    }
+
+    function transitionStopped() {
+      if (tickId) { clearInterval(tickId); tickId = null; }
+      const dur = elapsed;
+      state = 'idle';
+
+      document.getElementById('timer-block').className  = 'timer-block';
+      document.getElementById('status-label').textContent = '// ready';
+      document.getElementById('timer-sub').textContent  = 'tap start to begin';
+      document.getElementById('progress-bar').className = 'progress-bar';
+      document.getElementById('progress-bar').style.width = '100%';
+
+      setDisplay(SESSION_SECONDS, 'idle');
+
+      const btn = document.getElementById('action-btn');
+      btn.className = 'start';
+      btn.innerHTML = '&#10052;&nbsp; Start Session';
+
+      if (dur >= 10) logSession('stopped', dur);
+    }
+
+    function transitionIdle() {
+      state = 'idle';
+      document.getElementById('timer-block').className  = 'timer-block';
+      document.getElementById('status-label').textContent = '// ready';
+      document.getElementById('timer-sub').textContent  = 'tap start to begin';
+      document.getElementById('progress-bar').className = 'progress-bar';
+      document.getElementById('progress-bar').style.width = '100%';
+      setDisplay(SESSION_SECONDS, 'idle');
+
+      const btn = document.getElementById('action-btn');
+      btn.className = 'start';
+      btn.innerHTML = '&#10052;&nbsp; Start Session';
+    }
+
+    function handleAction() {
+      if (state === 'idle' || state === 'done') {
+        transitionRunning();
+      } else if (state === 'running') {
+        transitionStopped();
+      }
+    }
+
+    // ── Google Sheets logging ─────────────────────────────────────
+    async function logSession(event, durationSec) {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=logColdTherapy&event=${event}&duration_sec=${durationSec}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        showToast(`// OK: session logged (${event})`, 'success');
+      } catch (e) {
+        showToast('// ERR: could not log session — saved locally', 'error');
+        saveLocalFallback(event, durationSec);
+      }
+      await loadTodaySessions();
+    }
+
+    function saveLocalFallback(event, durationSec) {
+      const key  = 'cold_therapy_fallback';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.push({ timestamp: new Date().toISOString(), event, duration_sec: durationSec });
+      localStorage.setItem(key, JSON.stringify(list));
+    }
+
+    // ── Load today's sessions ────────────────────────────────────
+    async function loadTodaySessions() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
+        const data = await res.json();
+
+        renderSessionLog(data.sessions || []);
+        document.getElementById('footer').textContent =
+          `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()} · logged to google sheet`;
+
+      } catch (e) {
+        // fall back to local storage display
+        const local = JSON.parse(localStorage.getItem('cold_therapy_fallback') || '[]');
+        const today = new Date().toDateString();
+        const todayLocal = local.filter(s => new Date(s.timestamp).toDateString() === today);
+        renderSessionLog(todayLocal.map(s => ({
+          timestamp: s.timestamp,
+          event: s.event,
+          duration_sec: s.duration_sec
+        })));
+      }
+    }
+
+    function renderSessionLog(sessions) {
+      const list  = document.getElementById('log-list');
+      const label = document.getElementById('session-count-label');
+
+      const completed = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
+      const total     = sessions.length;
+
+      if (total > 0) {
+        label.textContent = `// today's sessions — ${completed} complete, ${total} total`;
+      } else {
+        label.textContent = '// today\'s sessions';
+      }
+
+      // Update "last ice" line on the timer card
+      const lastIceEl = document.getElementById('last-ice');
+      if (sessions.length > 0) {
+        const latestTs = sessions.reduce((best, s) =>
+          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
+        ).timestamp;
+        const ago = fmtAgo(Date.now() - new Date(latestTs).getTime());
+        lastIceEl.textContent = `last ice: ${ago}`;
+      } else {
+        lastIceEl.textContent = '';
+      }
+
+      if (!sessions.length) {
+        list.innerHTML = '<div class="no-entries">// no sessions yet today</div>';
+        return;
+      }
+
+      list.innerHTML = '';
+      [...sessions].reverse().forEach(s => {
+        const row  = document.createElement('div');
+        row.className = 'log-row';
+
+        const mins = Math.floor(s.duration_sec / 60);
+        const secs = s.duration_sec % 60;
+        const durStr = mins > 0
+          ? `${mins}:${String(secs).padStart(2,'0')}`
+          : `0:${String(secs).padStart(2,'0')}`;
+
+        const isComplete = (s.event || '').toLowerCase() !== 'stopped';
+        const badgeClass = isComplete ? 'complete' : 'stopped';
+        const badgeLabel = isComplete ? '&#10003; done' : 'stopped';
+
+        row.innerHTML = `
+          <div class="log-time">${fmtTime(s.timestamp)}</div>
+          <div class="log-duration">${durStr}</div>
+          <div class="log-badge ${badgeClass}">${badgeLabel}</div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    loadTodaySessions();
+  </script>
+</body>
+</html>

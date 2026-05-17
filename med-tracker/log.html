@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Med Log</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+      --yellow-dim: rgba(245,158,11,0.08);
+      --red: #ef4444;
+      --red-dim: #7f1d1d;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      width: 100%;
+      max-width: 400px;
+      padding: 28px 28px 24px;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 20px; height: 20px;
+      border-bottom: 2px solid var(--accent-dim);
+      border-right: 2px solid var(--accent-dim);
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .header-left h1 span { color: var(--accent); }
+
+    .header-left p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .med-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .med-name-display {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 36px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--ink);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .dose-display {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 18px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    button {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 18px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.08s;
+      min-height: 64px;
+    }
+
+    button:active:not(:disabled) { transform: scale(0.99); }
+
+    button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .toast {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+
+    .toast.success { background: var(--green-dim);    color: var(--green);  border: 1px solid #166534;         display: block; }
+    .toast.warn    { background: var(--yellow-dim);   color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); display: block; }
+    .toast.error   { background: rgba(224,92,26,0.1); color: var(--accent); border: 1px solid var(--accent-dim); display: block; }
+
+    .cancel-link {
+      display: none;
+      margin-top: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="header">
+      <div class="header-left">
+        <h1>MED <span>LOG</span></h1>
+        <p>Dose confirmation</p>
+      </div>
+      <div class="status-dot">READY</div>
+    </div>
+
+    <div class="med-label">// Medication</div>
+    <div class="med-name-display" id="med-name">Loading...</div>
+    <div class="dose-display" id="dose"></div>
+
+    <button id="log-btn" disabled onclick="logDose()">&#9654;&nbsp; Log Dose Now</button>
+    <div class="toast" id="toast"></div>
+    <div class="cancel-link" id="cancel-link" onclick="cancelLog()">&#8592; cancel</div>
+
+    <div class="footer">
+      <span>v1.0</span>
+      <span>timestamp auto-logged</span>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+
+    const medId = new URLSearchParams(window.location.search).get('med');
+    let currentMed  = null;
+    let earlyWarn   = false;   // true if >30 min remains on last dose
+    let warnMs      = 0;       // ms remaining when warning was set
+    let confirmed   = false;   // user tapped "log anyway"
+
+    function fmtRemaining(ms) {
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60000);
+      return h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+    }
+
+    async function init() {
+      if (!medId) {
+        document.getElementById('med-name').textContent = 'No medication specified';
+        return;
+      }
+
+      try {
+        const [medsRes, lastRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getMeds`),
+          fetch(`${SCRIPT_URL}?action=getLastDose&medId=${encodeURIComponent(medId)}`)
+        ]);
+        const meds     = await medsRes.json();
+        const lastData = await lastRes.json();
+
+        currentMed = meds.find(m => m.id === medId);
+
+        if (!currentMed) {
+          document.getElementById('med-name').textContent = 'Unknown medication';
+          showToast(`// ERR: "${medId}" not found in sheet`, 'error');
+          return;
+        }
+
+        document.getElementById('med-name').textContent = currentMed.name.toUpperCase();
+        document.getElementById('dose').textContent = currentMed.dose;
+        document.getElementById('card').style.borderTopColor = currentMed.color;
+
+        // Check last dose across all history (not just today)
+        if (lastData.timestamp) {
+          const ts        = String(lastData.timestamp).replace(' ', 'T');
+          const doseMs    = new Date(ts).getTime();
+          const remaining = doseMs + currentMed.interval_hours * 3_600_000 - Date.now();
+          if (!isNaN(remaining) && remaining > 30 * 60 * 1000) {
+            earlyWarn = true;
+            warnMs    = remaining;
+          }
+        }
+
+        document.getElementById('log-btn').disabled = false;
+      } catch (err) {
+        document.getElementById('med-name').textContent = 'Error loading';
+        showToast('// ERR: check connection and try again', 'error');
+      }
+    }
+
+    async function logDose() {
+      const btn    = document.getElementById('log-btn');
+      const cancel = document.getElementById('cancel-link');
+
+      // First tap when still within interval → warn, require second tap
+      if (earlyWarn && !confirmed) {
+        confirmed = true;
+        showToast(
+          `// WARN: next dose not due for ${fmtRemaining(warnMs)} — tap again to log anyway`,
+          'warn'
+        );
+        btn.innerHTML          = '&#9888;&nbsp; Log Anyway';
+        btn.style.background   = 'var(--yellow)';
+        btn.style.color        = '#000';
+        cancel.style.display   = 'block';
+        return;
+      }
+
+      btn.disabled           = true;
+      btn.textContent        = '... Transmitting';
+      cancel.style.display   = 'none';
+
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=logDose&medId=${encodeURIComponent(medId)}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        btn.innerHTML = '&#10003;&nbsp; Logged';
+        showToast(`// OK: dose logged at ${timeStr}`, 'success');
+
+        setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+      } catch (err) {
+        btn.disabled           = false;
+        btn.innerHTML          = earlyWarn ? '&#9888;&nbsp; Log Anyway' : '&#9654;&nbsp; Log Dose Now';
+        showToast('// ERR: failed — tap to retry', 'error');
+      }
+    }
+
+    function cancelLog() {
+      confirmed              = false;
+      const btn              = document.getElementById('log-btn');
+      btn.innerHTML          = '&#9654;&nbsp; Log Dose Now';
+      btn.style.background   = '';
+      btn.style.color        = '';
+      document.getElementById('cancel-link').style.display = 'none';
+      const t                = document.getElementById('toast');
+      t.className            = 'toast';
+      t.style.display        = 'none';
+    }
+
+    function showToast(msg, type) {
+      const t      = document.getElementById('toast');
+      t.textContent = msg;
+      t.className  = `toast ${type}`;
+    }
+
+    init();
+  </script>
+</body>
+</html>

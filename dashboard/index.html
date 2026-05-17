@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recovery Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 20px 16px 32px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 26px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header h1 span { color: var(--accent); }
+
+    .header p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Send request button */
+    .request-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      padding: 14px;
+    }
+
+    textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      outline: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--ink);
+      padding: 10px 12px;
+      width: 100%;
+      resize: none;
+      height: 60px;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+      margin-bottom: 10px;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--border-bright); }
+
+    #send-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 16px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.08s;
+      min-height: 58px;
+    }
+
+    #send-btn:active:not(:disabled) { transform: scale(0.99); }
+    #send-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+    .notify-toast {
+      display: none;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    .notify-toast.success { background: var(--green-dim); color: var(--green); border: 1px solid #166534; display: block; }
+    .notify-toast.error   { background: rgba(224,92,26,0.1); color: var(--accent); border: 1px solid var(--accent-dim); display: block; }
+
+    /* Clock */
+    .clock-bar {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    .clock-bar span {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    /* Tool cards */
+    a.tool-card {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border-bright);
+      border-radius: 2px;
+      padding: 16px 18px;
+      text-decoration: none;
+      color: var(--ink);
+      transition: border-color 0.15s, border-left-color 0.15s;
+    }
+
+    a.tool-card:active { border-color: var(--accent); }
+
+    a.tool-card.placeholder {
+      opacity: 0.38;
+      pointer-events: none;
+    }
+
+    .tool-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .tool-name {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .tool-arrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .tool-blurb {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      line-height: 1.5;
+    }
+
+    .tool-blurb .due   { color: var(--accent); }
+    .tool-blurb .soon  { color: var(--yellow); }
+    .tool-blurb .ok    { color: var(--green); }
+    .tool-blurb .apap  { color: var(--border-bright); margin-top: 2px; }
+
+    /* Footer */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <div class="header">
+      <div>
+        <h1>RECOVERY <span>HQ</span></h1>
+        <p>Jessie's dashboard</p>
+      </div>
+      <div class="status-dot">LIVE</div>
+    </div>
+
+    <div class="clock-bar" id="clock-bar">—</div>
+
+    <!-- Send request -->
+    <div class="request-card">
+      <textarea id="note" placeholder="what do you need? (optional)"></textarea>
+      <button id="send-btn" onclick="sendAlert()">&#9654;&nbsp; Send Request</button>
+      <div class="notify-toast" id="notify-toast"></div>
+    </div>
+
+    <!-- Appointments -->
+    <a class="tool-card" href="../appointments/index.html" id="appt-card">
+      <div class="tool-top">
+        <div class="tool-name">Appointments</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="appt-blurb">loading...</div>
+    </a>
+
+    <!-- Med Tracker -->
+    <a class="tool-card" href="../med-tracker/index.html" id="med-card">
+      <div class="tool-top">
+        <div class="tool-name">Med Tracker</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="med-blurb">loading...</div>
+    </a>
+
+    <!-- BP Log -->
+    <a class="tool-card" href="../BP Log/index.html">
+      <div class="tool-top">
+        <div class="tool-name">BP Log</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb">tap to log blood pressure reading</div>
+    </a>
+
+    <!-- PT Checklist -->
+    <a class="tool-card" href="../pt-checklist/index.html" id="pt-card">
+      <div class="tool-top">
+        <div class="tool-name">PT Checklist</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="pt-blurb">tap to open</div>
+    </a>
+
+    <!-- ROM Log -->
+    <a class="tool-card" href="../rom-log/index.html" id="rom-card">
+      <div class="tool-top">
+        <div class="tool-name">ROM Log</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="rom-blurb">loading...</div>
+    </a>
+
+    <!-- Pain Log -->
+    <a class="tool-card" href="../pain-log/index.html" id="pain-card">
+      <div class="tool-top">
+        <div class="tool-name">Pain Log</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="pain-blurb">loading...</div>
+    </a>
+
+    <!-- Cold Therapy -->
+    <a class="tool-card" href="../cold-therapy/index.html" id="cold-card">
+      <div class="tool-top">
+        <div class="tool-name">Cold Therapy</div>
+        <div class="tool-arrow">&#9654;</div>
+      </div>
+      <div class="tool-blurb" id="cold-blurb">loading...</div>
+    </a>
+
+    <div class="footer">
+      <span id="footer-time">—</span>
+      <span>auto-refresh 5m</span>
+    </div>
+
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+    const TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
+
+    let cooldown = false;
+
+    // ── Clock ────────────────────────────────────────────────
+    function updateClock() {
+      const now  = new Date();
+      const day  = now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase();
+      const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      document.getElementById('clock-bar').innerHTML =
+        `${day} &middot; ${date} &middot; <span>${time}</span>`;
+    }
+    updateClock();
+    setInterval(updateClock, 30_000);
+
+    // ── Appointments ─────────────────────────────────────────
+    async function loadApptStatus() {
+      try {
+        const res   = await fetch(`${SCRIPT_URL}?action=getAppointments`);
+        const appts = await res.json();
+
+        const blurb = document.getElementById('appt-blurb');
+        const card  = document.getElementById('appt-card');
+
+        if (!appts.length) {
+          blurb.textContent = 'no upcoming appointments';
+          return;
+        }
+
+        const next     = appts[0];
+        const apptDate = new Date(next.date + 'T00:00:00');
+        const today    = new Date(); today.setHours(0,0,0,0);
+        const days     = Math.round((apptDate - today) / 86400000);
+        const daysStr  = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+        const dateStr  = apptDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        blurb.innerHTML = `<span style="color:var(--ink)">${next.title}</span><br>${dateStr} &middot; ${next.time} &middot; ${daysStr}`;
+        card.style.borderLeftColor = days <= 1 ? 'var(--accent)' : days <= 7 ? 'var(--yellow)' : 'var(--border-bright)';
+      } catch (err) {
+        document.getElementById('appt-blurb').textContent = '// could not load';
+      }
+    }
+
+    // ── Notify ──────────────────────────────────────────────
+    async function sendAlert() {
+      if (cooldown) return;
+
+      const btn   = document.getElementById('send-btn');
+      const note  = document.getElementById('note').value.trim();
+      const toast = document.getElementById('notify-toast');
+
+      cooldown = true;
+      btn.disabled = true;
+      btn.textContent = '... Sending';
+      toast.className = 'notify-toast';
+
+      try {
+        await fetch(`https://ntfy.sh/${TOPIC}`, {
+          method: 'POST',
+          headers: { 'Title': 'Jessie', 'Priority': 'high', 'Content-Type': 'text/plain' },
+          body: note || 'No details provided'
+        });
+
+        btn.innerHTML = '&#10003;&nbsp; Request Sent';
+        toast.textContent = '// OK: request sent';
+        toast.className = 'notify-toast success';
+        document.getElementById('note').value = '';
+
+        setTimeout(() => {
+          btn.innerHTML = '&#9654;&nbsp; Send Request';
+          btn.disabled = false;
+          toast.className = 'notify-toast';
+          cooldown = false;
+        }, 10000);
+
+      } catch (err) {
+        btn.innerHTML = '&#9654;&nbsp; Send Request';
+        btn.disabled = false;
+        toast.textContent = '// ERR: failed — tap to retry';
+        toast.className = 'notify-toast error';
+        cooldown = false;
+      }
+    }
+
+    // ── Med blurb ────────────────────────────────────────────
+    async function loadMedStatus() {
+      try {
+        const [medsRes, logRes, configRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getMeds`),
+          fetch(`${SCRIPT_URL}?action=getTodayLog`),
+          fetch(`${SCRIPT_URL}?action=getConfig`)
+        ]);
+
+        const meds     = await medsRes.json();
+        const todayLog = await logRes.json();
+        const config   = await configRes.json();
+
+        const limitMg   = Number(config.apap_limit_mg) || 3000;
+        const totalApap = todayLog.reduce((s, e) => s + (Number(e.apap_mg) || 0), 0);
+
+        function lastDoseFor(medId) {
+          return todayLog
+            .filter(e => e.med_id === medId)
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
+        }
+
+        function msRemaining(last, intervalHours) {
+          if (!last) return null;
+          return new Date(last.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
+        }
+
+        function fmt(ms) {
+          const h = Math.floor(ms / 3_600_000);
+          const m = Math.floor((ms % 3_600_000) / 60000);
+          return `${h}h ${String(m).padStart(2, '0')}m`;
+        }
+
+        // Find due/soon meds
+        const dueMeds  = [];
+        const soonMeds = [];
+        let nextMed = null;
+        let nextMs  = Infinity;
+
+        meds.forEach(med => {
+          const last      = lastDoseFor(med.id);
+          const remaining = msRemaining(last, med.interval_hours);
+
+          if (remaining === null || remaining <= 0) {
+            dueMeds.push(med.name);
+          } else if (remaining < 3_600_000) {
+            soonMeds.push({ name: med.name, remaining });
+          } else if (remaining < nextMs) {
+            nextMs  = remaining;
+            nextMed = { name: med.name, remaining };
+          }
+        });
+
+        // Build blurb HTML
+        const blurb = document.getElementById('med-blurb');
+        let lines = [];
+
+        if (dueMeds.length > 0) {
+          lines.push(`<span class="due">&#9654; due now: ${dueMeds.join(', ')}</span>`);
+        }
+        if (soonMeds.length > 0) {
+          soonMeds.forEach(m => lines.push(`<span class="soon">soon: ${m.name} in ${fmt(m.remaining)}</span>`));
+        }
+        if (lines.length === 0 && nextMed) {
+          lines.push(`<span class="ok">&#10003; on schedule</span>`);
+          lines.push(`<span>next: ${nextMed.name} in ${fmt(nextMed.remaining)}</span>`);
+        }
+        if (lines.length === 0) {
+          lines.push(`<span class="ok">&#10003; all on schedule</span>`);
+        }
+
+        lines.push(`<div class="apap">apap today: ${totalApap}mg / ${limitMg}mg</div>`);
+        blurb.innerHTML = lines.join('<br>');
+
+        // Color the card border based on urgency
+        const card = document.getElementById('med-card');
+        if (dueMeds.length > 0)       card.style.borderLeftColor = 'var(--accent)';
+        else if (soonMeds.length > 0) card.style.borderLeftColor = 'var(--yellow)';
+        else                           card.style.borderLeftColor = 'var(--green)';
+
+        document.getElementById('footer-time').textContent =
+          `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}`;
+
+      } catch (err) {
+        document.getElementById('med-blurb').textContent = '// could not load';
+      }
+    }
+
+    async function loadPtStatus() {
+      try {
+        const [exRes, ptRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getPtExercises`),
+          fetch(`${SCRIPT_URL}?action=getTodayPt`)
+        ]);
+        const exercises = await exRes.json();
+        const todaySets = await ptRes.json();
+
+        const total    = exercises.length;
+        const complete = exercises.filter(ex => (todaySets[ex.id] || 0) >= ex.sets).length;
+        const allDone  = complete === total && total > 0;
+
+        const blurb = document.getElementById('pt-blurb');
+        const card  = document.getElementById('pt-card');
+
+        blurb.innerHTML = allDone
+          ? `<span style="color:var(--green)">&#10003; all ${total} exercises complete</span>`
+          : `${complete} / ${total} exercises complete today`;
+
+        card.style.borderLeftColor = allDone ? 'var(--green)' : complete > 0 ? 'var(--yellow)' : 'var(--border-bright)';
+      } catch (err) {
+        document.getElementById('pt-blurb').textContent = '// could not load';
+      }
+    }
+
+    async function loadRomStatus() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getTodayRom`);
+        const data = await res.json();
+        const total = data.totalMinutes || 0;
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        const done = total >= 240;
+        const blurb = document.getElementById('rom-blurb');
+        const card  = document.getElementById('rom-card');
+        blurb.innerHTML = done
+          ? `<span style="color:var(--green)">&#10003; goal reached &mdash; ${h}h ${String(m).padStart(2,'0')}m today</span>`
+          : `${h}h ${String(m).padStart(2,'0')}m / 4h 00m today`;
+        card.style.borderLeftColor = done ? 'var(--green)' : total > 0 ? 'var(--yellow)' : 'var(--border-bright)';
+      } catch (err) {
+        document.getElementById('rom-blurb').textContent = '// could not load';
+      }
+    }
+
+    async function loadPainStatus() {
+      const PAIN_COLORS = [null,'#16a34a','#22c55e','#84cc16','#eab308','#f59e0b','#f97316','#e05c1a','#dc2626','#b91c1c','#7f1d1d'];
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getTodayPain`);
+        const data = await res.json();
+        const blurb = document.getElementById('pain-blurb');
+        const card  = document.getElementById('pain-card');
+        if (!data.entries || data.entries.length === 0) {
+          blurb.textContent = 'no entries today — tap to log';
+          card.style.borderLeftColor = 'var(--border-bright)';
+          return;
+        }
+        const avg   = data.average;
+        const color = PAIN_COLORS[Math.min(10, Math.max(1, Math.round(avg)))] || 'var(--accent)';
+        blurb.innerHTML = `<span style="color:${color}">${avg}/10 avg today</span> &middot; ${data.entries.length} entr${data.entries.length === 1 ? 'y' : 'ies'}`;
+        card.style.borderLeftColor = avg >= 7 ? 'var(--accent)' : avg >= 4 ? 'var(--yellow)' : 'var(--green)';
+      } catch (err) {
+        document.getElementById('pain-blurb').textContent = '// could not load';
+      }
+    }
+
+    async function loadColdTherapyStatus() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
+        const data = await res.json();
+
+        const sessions = data.sessions || [];
+        const blurb    = document.getElementById('cold-blurb');
+        const card     = document.getElementById('cold-card');
+
+        if (sessions.length === 0) {
+          blurb.textContent = 'no sessions today — tap to start';
+          card.style.borderLeftColor = 'var(--border-bright)';
+          return;
+        }
+
+        const latest = sessions.reduce((best, s) =>
+          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
+        );
+        const msAgo    = Date.now() - new Date(latest.timestamp).getTime();
+        const totalMin = Math.floor(msAgo / 60000);
+        let agoStr;
+        if (totalMin < 2)  agoStr = 'just now';
+        else if (totalMin < 60) agoStr = `${totalMin}m ago`;
+        else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
+
+        const complete = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
+        blurb.textContent = `last ice: ${agoStr} · ${complete} session${complete !== 1 ? 's' : ''} today`;
+
+        const hoursAgo = msAgo / 3_600_000;
+        card.style.borderLeftColor = hoursAgo < 3 ? 'var(--green)' : hoursAgo < 6 ? 'var(--yellow)' : 'var(--accent)';
+
+      } catch (e) {
+        document.getElementById('cold-blurb').textContent = 'tap to start 20-min icing session';
+      }
+    }
+
+    loadApptStatus();
+    loadMedStatus();
+    loadPtStatus();
+    loadRomStatus();
+    loadPainStatus();
+    loadColdTherapyStatus();
+    setInterval(loadApptStatus, 300_000);
+    setInterval(loadMedStatus, 300_000);
+    setInterval(loadPtStatus, 300_000);
+    setInterval(loadRomStatus, 300_000);
+    setInterval(loadPainStatus, 300_000);
+    setInterval(loadColdTherapyStatus, 300_000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vitals Log</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      width: 100%;
+      max-width: 400px;
+      padding: 28px 28px 24px;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 20px; height: 20px;
+      border-bottom: 2px solid var(--accent-dim);
+      border-right: 2px solid var(--accent-dim);
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .header-left h1 span { color: var(--accent); }
+
+    .header-left p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .fields {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: stretch;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .input-wrap:focus-within { border-color: var(--accent); }
+
+    input[type="number"] {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 26px;
+      color: var(--ink);
+      padding: 10px 14px;
+      -moz-appearance: textfield;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    input[type="number"]::placeholder { color: var(--border-bright); }
+
+    .unit-badge {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      background: var(--bg);
+      border-left: 1px solid var(--border);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .row-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 2px 0;
+    }
+
+    .sep-line { flex: 1; height: 1px; background: var(--border); }
+
+    .sep span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--border-bright);
+      text-transform: uppercase;
+    }
+
+    textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      outline: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--ink);
+      padding: 10px 14px;
+      width: 100%;
+      resize: none;
+      height: 58px;
+      line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--border-bright); }
+
+    button {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 14px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.08s;
+    }
+
+    button:hover:not(:disabled) { background: #f06a2a; }
+    button:active:not(:disabled) { transform: scale(0.99); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .toast {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+
+    .toast.success {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid #166534;
+    }
+
+    .toast.error {
+      background: rgba(224, 92, 26, 0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+    }
+
+    .footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="header-left">
+        <h1>VITAL<span>S</span></h1>
+        <p>Blood pressure monitor</p>
+      </div>
+      <div class="status-dot">READY</div>
+    </div>
+
+    <div class="fields">
+      <div class="row-fields">
+        <div class="field">
+          <label>Systolic <span style="opacity:0.45">// top</span></label>
+          <div class="input-wrap">
+            <input type="number" id="systolic" placeholder="120" min="60" max="250">
+            <span class="unit-badge">SYS</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Diastolic <span style="opacity:0.45">// btm</span></label>
+          <div class="input-wrap">
+            <input type="number" id="diastolic" placeholder="80" min="40" max="150">
+            <span class="unit-badge">DIA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep">
+        <div class="sep-line"></div>
+        <span>mmHg</span>
+        <div class="sep-line"></div>
+      </div>
+
+      <div class="field">
+        <label>Pulse</label>
+        <div class="input-wrap">
+          <input type="number" id="pulse" placeholder="72" min="30" max="220">
+          <span class="unit-badge">BPM</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Notes &nbsp;<span style="opacity:0.4">// optional</span></label>
+        <textarea id="notes" placeholder="e.g. post-workout, felt off..."></textarea>
+      </div>
+    </div>
+
+    <button id="submitBtn" onclick="submitReading()">&#9654;&nbsp; Log Reading</button>
+    <div class="toast" id="toast"></div>
+
+    <div class="footer">
+      <span>v1.0</span>
+      <span>timestamp auto-logged</span>
+    </div>
+  </div>
+
+  <script>
+    const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+
+    async function submitReading() {
+      const systolic = document.getElementById('systolic').value;
+      const diastolic = document.getElementById('diastolic').value;
+      const pulse = document.getElementById('pulse').value;
+      const notes = document.getElementById('notes').value;
+
+      if (!systolic || !diastolic || !pulse) {
+        showToast('// ERR: fill in sys, dia, and pulse', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '... TRANSMITTING';
+
+      try {
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ systolic, diastolic, pulse, notes })
+        });
+
+        showToast('// OK: reading logged', 'success');
+        document.getElementById('systolic').value = '';
+        document.getElementById('diastolic').value = '';
+        document.getElementById('pulse').value = '';
+        document.getElementById('notes').value = '';
+      } catch (err) {
+        showToast('// ERR: connection failed — retry', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '&#9654;&nbsp; Log Reading';
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast ${type}`;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 4000);
+    }
+  </script>
+</body>
+</html>

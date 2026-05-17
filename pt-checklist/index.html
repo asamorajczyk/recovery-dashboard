@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PT Checklist</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 24px 16px 32px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header h1 span { color: var(--accent); }
+
+    .header p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Daily progress */
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+
+    .progress-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-count {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 20px;
+      color: var(--ink);
+      margin-bottom: 10px;
+      transition: color 0.3s;
+    }
+
+    .progress-count.done { color: var(--green); }
+
+    .progress-bar-bg {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .progress-bar.done { background: var(--green); }
+
+    /* Exercise cards */
+    .exercise-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border-bright);
+      border-radius: 2px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-left-color 0.3s;
+    }
+
+    .exercise-card.in-progress { border-left-color: var(--accent); }
+    .exercise-card.complete    { border-left-color: var(--green); background: #161f18; }
+
+    .exercise-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 14px 10px;
+    }
+
+    .exercise-info { flex: 1; }
+
+    .exercise-name {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .exercise-reps {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .exercise-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .set-count {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      color: var(--muted);
+      transition: color 0.3s;
+    }
+
+    .exercise-card.in-progress .set-count { color: var(--accent); }
+    .exercise-card.complete    .set-count { color: var(--green); }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-add {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s, transform 0.08s;
+    }
+
+    .btn-add:active { transform: scale(0.92); }
+    .btn-add:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .exercise-card.complete .btn-add { background: var(--green); }
+
+    .btn-minus {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      width: 36px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s;
+    }
+
+    .btn-minus:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    .btn-photo {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Per-exercise set progress bar */
+    .set-bar-bg {
+      height: 4px;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+    }
+
+    .set-bar {
+      height: 4px;
+      background: var(--accent);
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .exercise-card.complete .set-bar { background: var(--green); }
+
+    /* Error toast */
+    .error-toast {
+      display: none;
+      margin-top: -4px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: rgba(224,92,26,0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    .error-toast.show { display: block; }
+
+    .footer {
+      margin-top: 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .lightbox.open { display: flex; }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 2px;
+      object-fit: contain;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--ink);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <div class="header">
+      <div>
+        <h1>PT <span>CHECKLIST</span></h1>
+        <p id="header-date">—</p>
+      </div>
+      <div class="status-dot">LIVE</div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-label">// Exercises complete today</div>
+      <div class="progress-count" id="progress-count">0 / 0 complete</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <div id="exercise-list"></div>
+    <div class="error-toast" id="error-toast"></div>
+
+    <div class="footer">
+      <span id="footer-time">—</span>
+      <span>resets daily</span>
+    </div>
+
+  </div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">✕ close</button>
+    <img id="lightbox-img" src="" alt="Exercise photo">
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+
+    let exercises  = [];
+    let todaySets  = {}; // { exerciseId: completedSets }
+    let pending    = {}; // optimistic increments not yet confirmed
+
+    document.getElementById('header-date').textContent =
+      new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+
+    function setsFor(id) {
+      return (todaySets[id] || 0) + (pending[id] || 0);
+    }
+
+    function renderAll() {
+      const list = document.getElementById('exercise-list');
+      list.innerHTML = '';
+
+      let totalComplete = 0;
+
+      exercises.forEach(ex => {
+        const done     = Math.min(setsFor(ex.id), ex.sets);
+        const pct      = ex.sets > 0 ? Math.round((done / ex.sets) * 100) : 0;
+        const complete = done >= ex.sets;
+        const hasPhoto = ex.image_filename && ex.image_filename !== 'undefined' && ex.image_filename.trim() !== '';
+
+        if (complete) totalComplete++;
+
+        const card = document.createElement('div');
+        card.className = 'exercise-card' + (complete ? ' complete' : done > 0 ? ' in-progress' : '');
+
+        card.innerHTML = `
+          <div class="exercise-top">
+            <div class="exercise-info">
+              <div class="exercise-name">${ex.name}</div>
+              <div class="exercise-reps">${ex.reps_per_set} &middot; ${ex.sets} sets</div>
+            </div>
+            <div class="exercise-right">
+              <div class="set-count">${done}/${ex.sets}</div>
+              <div class="btn-row">
+                <button class="btn-minus"
+                  ${done === 0 ? 'disabled' : ''}
+                  onclick="adjustSet('${ex.id}', '${ex.name}', -1)">−</button>
+                <button class="btn-add"
+                  ${complete ? 'disabled' : ''}
+                  onclick="adjustSet('${ex.id}', '${ex.name}', 1)">+</button>
+                ${hasPhoto ? `<button class="btn-photo" onclick="showPhoto(event, 'images/${ex.image_filename}')">photo</button>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="set-bar-bg">
+            <div class="set-bar" style="width:${pct}%"></div>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+
+      // Overall progress
+      const total   = exercises.length;
+      const allDone = totalComplete === total && total > 0;
+      document.getElementById('progress-count').textContent = `${totalComplete} / ${total} complete`;
+      document.getElementById('progress-count').className = 'progress-count' + (allDone ? ' done' : '');
+      const overallPct = total > 0 ? Math.round((totalComplete / total) * 100) : 0;
+      document.getElementById('progress-bar').style.width = overallPct + '%';
+      document.getElementById('progress-bar').className = 'progress-bar' + (allDone ? ' done' : '');
+    }
+
+    async function adjustSet(id, name, delta) {
+      const ex   = exercises.find(e => e.id === id);
+      if (!ex) return;
+
+      const current = setsFor(id);
+      if (delta < 0 && current <= 0) return;
+      if (delta > 0 && current >= ex.sets) return;
+
+      // Optimistic update
+      pending[id] = (pending[id] || 0) + delta;
+      renderAll();
+
+      try {
+        const url = `${SCRIPT_URL}?action=logPtSets` +
+          `&exerciseId=${encodeURIComponent(id)}` +
+          `&exerciseName=${encodeURIComponent(name)}` +
+          `&setsAdded=${delta}`;
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        // Confirm: move from pending to todaySets
+        todaySets[id] = (todaySets[id] || 0) + delta;
+        pending[id]   = (pending[id] || 0) - delta;
+        renderAll();
+
+      } catch (err) {
+        // Roll back
+        pending[id] = (pending[id] || 0) - delta;
+        renderAll();
+        showError('// ERR: could not save — check connection');
+      }
+    }
+
+    function showError(msg) {
+      const t = document.getElementById('error-toast');
+      t.textContent = msg;
+      t.className = 'error-toast show';
+      setTimeout(() => { t.className = 'error-toast'; }, 4000);
+    }
+
+    function showPhoto(e, src) {
+      e.stopPropagation();
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').className = 'lightbox open';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').className = 'lightbox';
+      document.getElementById('lightbox-img').src = '';
+    }
+
+    async function loadData() {
+      try {
+        const [exRes, ptRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getPtExercises`),
+          fetch(`${SCRIPT_URL}?action=getTodayPt`)
+        ]);
+
+        exercises = await exRes.json();
+        todaySets = await ptRes.json();
+        pending   = {};
+
+        renderAll();
+
+        document.getElementById('footer-time').textContent =
+          `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}`;
+
+      } catch (err) {
+        document.getElementById('exercise-list').innerHTML =
+          '<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--accent);padding:8px 0">// ERR: could not load exercises</div>';
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 300_000);
+  </script>
+</body>
+</html>

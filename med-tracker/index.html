@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Med Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header-left h1 span { color: var(--accent); }
+
+    .header-left p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Separator */
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .sep-line { flex: 1; height: 1px; background: var(--border); }
+
+    .sep span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--border-bright);
+      text-transform: uppercase;
+    }
+
+    /* Med Cards */
+    .med-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 2px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .med-card.card-due {
+      background: rgba(224, 92, 26, 0.07);
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 1px var(--accent-dim), inset 0 0 20px rgba(224, 92, 26, 0.04);
+      animation: card-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes card-pulse {
+      0%, 100% { box-shadow: 0 0 0 1px var(--accent-dim), inset 0 0 20px rgba(224, 92, 26, 0.04); }
+      50%       { box-shadow: 0 0 0 1px var(--accent), inset 0 0 20px rgba(224, 92, 26, 0.08); }
+    }
+
+    .med-name {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .med-dose {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .med-last {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--border-bright);
+      margin-top: 5px;
+    }
+
+    .med-status {
+      flex-shrink: 0;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .med-status.due {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .med-status.soon { color: var(--yellow); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .error-msg {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      text-align: center;
+      padding: 32px 0;
+    }
+
+    .med-card-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .log-btn {
+      background: none;
+      border: 1px solid var(--border-bright);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+
+    .log-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .log-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .log-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .log-btn.success {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 10px 18px;
+      color: var(--ink);
+      white-space: nowrap;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .toast.show { opacity: 1; }
+    .toast.toast-ok   { border-color: var(--green);  color: var(--green); }
+    .toast.toast-err  { border-color: var(--accent);  color: var(--accent); }
+    .toast.toast-warn { border-color: var(--yellow);  color: var(--yellow); }
+
+    .log-btn.warn {
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <div class="header">
+      <div class="header-left">
+        <h1>MED <span>TRACKER</span></h1>
+        <p>Medication status</p>
+      </div>
+      <div class="status-dot">LIVE</div>
+    </div>
+
+    <div class="sep">
+      <div class="sep-line"></div>
+      <span>Medications</span>
+      <div class="sep-line"></div>
+    </div>
+
+    <div id="med-list"></div>
+
+    <div class="footer">
+      <span id="footer-time">—</span>
+      <span>auto-refresh 5m</span>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+
+    let meds = [];
+    let todayLog = [];
+    let tickInterval = null;
+
+    async function loadData() {
+      try {
+        const [medsRes, logRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getMeds`),
+          fetch(`${SCRIPT_URL}?action=getTodayLog`)
+        ]);
+
+        meds     = await medsRes.json();
+        todayLog = await logRes.json();
+
+        render();
+      } catch (err) {
+        document.getElementById('med-list').innerHTML =
+          `<div class="error-msg">// ERR: could not load data — check connection</div>`;
+      }
+    }
+
+    function lastDoseFor(medId) {
+      return todayLog
+        .filter(e => e.med_id === medId)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
+    }
+
+    function timeAgo(timestamp) {
+      const mins = Math.floor((Date.now() - new Date(timestamp)) / 60000);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return h > 0 ? `${h}h ${m}m ago` : `${mins}m ago`;
+    }
+
+    function msRemaining(lastDose, intervalHours) {
+      if (!lastDose) return null;
+      return new Date(lastDose.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
+    }
+
+    function formatCountdown(ms) {
+      if (ms <= 0) return 'DUE NOW';
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60000);
+      return `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+
+    function render() {
+      const list = document.getElementById('med-list');
+      list.innerHTML = '';
+
+      const dueMeds  = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r === null || r <= 0; });
+      const soonMeds = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r > 0 && r < 3_600_000; });
+      const okMeds   = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r >= 3_600_000; });
+
+      [...dueMeds, ...soonMeds, ...okMeds].forEach(med => {
+        const last      = lastDoseFor(med.id);
+        const remaining = msRemaining(last, med.interval_hours);
+        const isDue     = remaining === null || remaining <= 0;
+
+        let statusClass = '';
+        let statusText  = '— not taken today';
+
+        if (remaining !== null) {
+          if (remaining <= 0) {
+            statusClass = 'due';
+            statusText  = 'DUE NOW';
+          } else if (remaining < 3_600_000) {
+            statusClass = 'soon';
+            statusText  = formatCountdown(remaining);
+          } else {
+            statusText = formatCountdown(remaining);
+          }
+        } else {
+          statusClass = 'due';
+          statusText  = 'DUE NOW';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'med-card' + (isDue ? ' card-due' : '');
+        card.style.borderLeftColor = isDue ? 'var(--accent)' : med.color;
+
+        card.innerHTML = `
+          <div class="med-info">
+            <div class="med-name">${med.name}</div>
+            <div class="med-dose">${med.dose}</div>
+            ${last ? `<div class="med-last">${timeAgo(last.timestamp)}</div>` : ''}
+          </div>
+          <div class="med-card-right">
+            <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
+            <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+
+      const now = new Date();
+      document.getElementById('footer-time').textContent =
+        `updated ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}`;
+
+      if (tickInterval) clearInterval(tickInterval);
+      tickInterval = setInterval(tick, 60_000);
+    }
+
+    function tick() {
+      document.querySelectorAll('.med-status[data-med-id]').forEach(el => {
+        const med  = meds.find(m => m.id === el.dataset.medId);
+        if (!med) return;
+        const last      = lastDoseFor(med.id);
+        const remaining = msRemaining(last, med.interval_hours);
+
+        if (remaining === null) return;
+
+        if (remaining <= 0) {
+          el.className = 'med-status due';
+          el.textContent = 'DUE NOW';
+        } else if (remaining < 3_600_000) {
+          el.className = 'med-status soon';
+          el.textContent = formatCountdown(remaining);
+        } else {
+          el.className = 'med-status';
+          el.textContent = formatCountdown(remaining);
+        }
+      });
+    }
+
+    let toastTimer = null;
+
+    function showToast(msg, type, duration = 3000) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast show ${type}`;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.className = 'toast'; }, duration);
+    }
+
+    function fmtRemaining(ms) {
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60000);
+      return h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+    }
+
+    const pendingConfirm = new Map(); // medId -> reset timeout handle
+
+    async function manualLog(medId, btn) {
+      // Second tap — already warned, now log
+      if (pendingConfirm.has(medId)) {
+        clearTimeout(pendingConfirm.get(medId));
+        pendingConfirm.delete(medId);
+        await doLog(medId, btn);
+        return;
+      }
+
+      // First tap — check timing
+      btn.disabled = true;
+      btn.textContent = '...';
+
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getLastDose&medId=${encodeURIComponent(medId)}`);
+        const data = await res.json();
+
+        let tooEarly  = false;
+        let remaining = 0;
+
+        if (data.timestamp) {
+          const med = meds.find(m => m.id === medId);
+          const ts  = String(data.timestamp).replace(' ', 'T');
+          remaining = new Date(ts).getTime() + med.interval_hours * 3_600_000 - Date.now();
+          if (!isNaN(remaining) && remaining > 30 * 60 * 1000) tooEarly = true;
+        }
+
+        if (tooEarly) {
+          btn.disabled = false;
+          btn.textContent = '⚠ CONFIRM';
+          btn.classList.add('warn');
+          showToast(
+            `// WARN: not due for ${fmtRemaining(remaining)} — tap CONFIRM to log anyway`,
+            'toast-warn',
+            8000
+          );
+          // Auto-reset if ignored
+          const timer = setTimeout(() => {
+            if (pendingConfirm.has(medId)) {
+              pendingConfirm.delete(medId);
+              btn.textContent = '+ LOG';
+              btn.classList.remove('warn');
+            }
+          }, 8000);
+          pendingConfirm.set(medId, timer);
+        } else {
+          await doLog(medId, btn);
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '+ LOG';
+        showToast('// ERR: failed to log — tap to retry', 'toast-err');
+      }
+    }
+
+    async function doLog(medId, btn) {
+      btn.disabled = true;
+      btn.textContent = '...';
+      btn.classList.remove('warn');
+
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=logDose&medId=${encodeURIComponent(medId)}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        btn.textContent = '✓ LOGGED';
+        btn.classList.add('success');
+        showToast(
+          `// OK: ${data.med} logged at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+          'toast-ok'
+        );
+        setTimeout(() => loadData(), 1500);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '+ LOG';
+        showToast('// ERR: failed to log — tap to retry', 'toast-err');
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 300_000);
+  </script>
+</body>
+</html>

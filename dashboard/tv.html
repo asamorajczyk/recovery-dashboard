@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recovery HQ — TV</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --ice: #38bdf8;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .layout {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+      padding: 20px 24px 20px;
+      gap: 16px;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      font-size: 2.2vw;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .topbar-title span { color: var(--accent); }
+
+    .topbar-clock {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.8vw;
+      color: var(--ink);
+      letter-spacing: 0.1em;
+      text-align: right;
+    }
+
+    .topbar-clock .day {
+      font-size: 1vw;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85vw;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr auto;
+      gap: 14px;
+    }
+
+    /* Cold therapy strip */
+    .cold-strip {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      align-items: center;
+      gap: 0;
+      padding: 14px 24px;
+      border-top: 3px solid var(--ice);
+    }
+
+    .cold-strip .panel-title {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+      font-size: 1.1vw;
+      white-space: nowrap;
+      min-width: 160px;
+    }
+
+    .cold-divider {
+      width: 1px;
+      height: 36px;
+      background: var(--border);
+      margin: 0 28px;
+      flex-shrink: 0;
+    }
+
+    .cold-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .cold-meta-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7vw;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .cold-ago {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 2vw;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      transition: color 0.3s;
+    }
+
+    .cold-sessions {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-left: 0;
+    }
+
+    .cold-sessions-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7vw;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .cold-sessions-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 2vw;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .cold-strip .updated {
+      margin-left: auto;
+    }
+
+    /* Panels */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--border-bright);
+      border-radius: 2px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel.alert  { border-top-color: var(--accent); }
+    .panel.warn   { border-top-color: var(--yellow); }
+    .panel.good   { border-top-color: var(--green); }
+
+    .panel-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75vw;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .panel-title {
+      font-weight: 700;
+      font-size: 1.3vw;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── FILL BARS ───────────────────────────────────────────── */
+    /* Generic fill section: grows to eat remaining panel space  */
+    .fill-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 10px;
+      min-height: 24px;
+    }
+
+    .fill-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7vw;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .fill-track {
+      flex: 1;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      min-height: 10px;
+    }
+
+    .fill-inner {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease, background 0.5s ease;
+    }
+
+    /* ── APAP bar ────────────────────────────────────────────── */
+    .apap-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .apap-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85vw;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: color 0.3s;
+    }
+
+    .apap-thin-bg {
+      flex: 1;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .apap-thin-bar {
+      height: 6px;
+      border-radius: 2px;
+      background: var(--accent);
+      transition: width 0.4s, background 0.4s;
+    }
+
+    /* Med items */
+    .med-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      flex-shrink: 0;
+    }
+
+    .med-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .med-item-name {
+      font-weight: 700;
+      font-size: 1.4vw;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .med-item-dose {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85vw;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .med-badge {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1vw;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 6px 14px;
+      border-radius: 2px;
+    }
+
+    .med-badge.due  { color: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+    .med-badge.soon { color: var(--yellow); }
+    .med-badge.ok   { color: var(--muted); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+
+    .all-clear {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.1vw;
+      color: var(--green);
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Big number display (ROM) */
+    .big-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 4.5vw;
+      line-height: 1;
+      margin-bottom: 4px;
+      transition: color 0.3s;
+      flex-shrink: 0;
+    }
+
+    .big-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1vw;
+      color: var(--muted);
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    /* PT exercise list */
+    .ex-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .ex-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .ex-check {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border-bright);
+      border-radius: 2px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--green);
+    }
+
+    .ex-check.done { border-color: var(--green); background: var(--green-dim); }
+
+    .ex-name {
+      font-size: 1.1vw;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      margin-right: 10px;
+    }
+
+    .ex-sets {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9vw;
+      color: var(--muted);
+      flex-shrink: 0;
+      margin-left: 10px;
+    }
+
+    .ex-sets.done { color: var(--green); }
+
+    /* Per-exercise inline bar (between name and count) */
+    .ex-bar-bg {
+      flex: 1;
+      height: 5px;
+      background: var(--surface2);
+      border-radius: 2px;
+      overflow: hidden;
+      align-self: center;
+    }
+
+    .ex-bar-inner {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s;
+    }
+
+    /* Appointment */
+    .appt-days {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9vw;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .appt-name {
+      font-weight: 700;
+      font-size: 2vw;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      line-height: 1.1;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .appt-detail {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1vw;
+      color: var(--muted);
+      line-height: 1.8;
+      flex-shrink: 0;
+    }
+
+    .appt-detail span { color: var(--ink); }
+
+    .no-appt {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1vw;
+      color: var(--border-bright);
+      margin-top: 12px;
+    }
+
+    /* Pain avg in topbar */
+    .topbar-pain {
+      text-align: right;
+    }
+
+    .topbar-pain-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75vw;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .topbar-pain-num {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.8vw;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      transition: color 0.3s;
+    }
+
+    /* Footer */
+    .updated {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7vw;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      padding-top: 8px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-title">RECOVERY <span>HQ</span></div>
+      <div class="status-dot">LIVE</div>
+      <div style="display:flex;align-items:center;gap:32px">
+        <div class="topbar-pain">
+          <span class="topbar-pain-label">Pain avg today</span>
+          <span class="topbar-pain-num" id="topbar-pain-num">—</span>
+        </div>
+        <div class="topbar-clock">
+          <span class="day" id="clock-day">—</span>
+          <span id="clock-time">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2x2 Grid -->
+    <div class="grid">
+
+      <!-- MEDICATIONS -->
+      <div class="panel" id="med-panel">
+        <div class="panel-label">// status</div>
+        <div class="panel-title">Medications</div>
+
+        <div class="apap-row">
+          <div class="apap-num" id="apap-num">—</div>
+          <div class="apap-thin-bg"><div class="apap-thin-bar" id="apap-thin-bar"></div></div>
+        </div>
+
+        <div class="med-list" id="med-list">
+          <div class="all-clear">loading...</div>
+        </div>
+
+        <!-- APAP fill bar fills remaining space -->
+        <div class="fill-section">
+          <div class="fill-label" id="apap-fill-label">acetaminophen today</div>
+          <div class="fill-track">
+            <div class="fill-inner" id="apap-fill-bar" style="width:0%;background:var(--accent)"></div>
+          </div>
+        </div>
+
+        <div class="updated" id="med-updated">—</div>
+      </div>
+
+      <!-- ROM -->
+      <div class="panel" id="rom-panel">
+        <div class="panel-label">// daily goal: 4 hours</div>
+        <div class="panel-title">Range of Motion</div>
+
+        <div class="big-num" id="rom-num">—</div>
+        <div class="big-sub" id="rom-sub">/ 4h 00m today</div>
+
+        <!-- ROM progress fills all remaining space -->
+        <div class="fill-section">
+          <div class="fill-label" id="rom-fill-label">progress toward goal</div>
+          <div class="fill-track">
+            <div class="fill-inner" id="rom-bar" style="width:0%;background:var(--accent)"></div>
+          </div>
+        </div>
+
+        <div class="updated" id="rom-updated">—</div>
+      </div>
+
+      <!-- PT CHECKLIST -->
+      <div class="panel" id="pt-panel">
+        <div class="panel-label">// daily exercises</div>
+        <div class="panel-title">PT Checklist</div>
+
+        <div class="ex-list" id="ex-list">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1vw;color:var(--muted)">loading...</div>
+        </div>
+
+        <!-- Overall PT progress fills remaining space -->
+        <div class="fill-section">
+          <div class="fill-label" id="pt-fill-label">overall completion</div>
+          <div class="fill-track">
+            <div class="fill-inner" id="pt-fill-bar" style="width:0%;background:var(--accent)"></div>
+          </div>
+        </div>
+
+        <div class="updated" id="pt-updated">—</div>
+      </div>
+
+      <!-- NEXT APPOINTMENT + PAIN -->
+      <div class="panel" id="appt-panel">
+        <div class="panel-label">// schedule</div>
+        <div class="panel-title">Next Appointment</div>
+
+        <div id="appt-content">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:1vw;color:var(--muted)">loading...</div>
+        </div>
+
+        <div class="updated" id="appt-updated">—</div>
+      </div>
+
+      <!-- COLD THERAPY STRIP -->
+      <div class="panel cold-strip" id="cold-panel">
+        <div>
+          <div class="panel-label">// cold therapy</div>
+          <div class="panel-title">Cold Therapy</div>
+        </div>
+        <div class="cold-divider"></div>
+        <div class="cold-meta">
+          <div class="cold-meta-label">Last ice</div>
+          <div class="cold-ago" id="cold-ago">—</div>
+        </div>
+        <div class="cold-divider"></div>
+        <div class="cold-sessions">
+          <div class="cold-sessions-label">Sessions today</div>
+          <div class="cold-sessions-num" id="cold-sessions-num">—</div>
+        </div>
+        <div class="updated" id="cold-updated">—</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+
+    const PAIN_COLORS = [null,'#16a34a','#22c55e','#84cc16','#eab308','#f59e0b','#f97316','#e05c1a','#dc2626','#b91c1c','#7f1d1d'];
+    function painColor(s) { return PAIN_COLORS[Math.min(10, Math.max(1, Math.round(s)))] || '#e05c1a'; }
+
+    // ── Clock ────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-day').textContent =
+        now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+      document.getElementById('clock-time').textContent =
+        now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+    updateClock();
+    setInterval(updateClock, 30_000);
+
+    function timeNow() {
+      return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    }
+
+    function fmtMins(mins) {
+      const h = Math.floor(mins / 60);
+      const m = Math.round(mins % 60);
+      return `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+
+    function msRemaining(lastDose, intervalHours) {
+      if (!lastDose) return null;
+      return new Date(lastDose.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
+    }
+
+    function fmtCountdown(ms) {
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60000);
+      return `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+
+    // ── Medications ──────────────────────────────────────────
+    async function loadMeds() {
+      try {
+        const [medsRes, logRes, configRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getMeds`),
+          fetch(`${SCRIPT_URL}?action=getTodayLog`),
+          fetch(`${SCRIPT_URL}?action=getConfig`)
+        ]);
+        const meds     = await medsRes.json();
+        const todayLog = await logRes.json();
+        const config   = await configRes.json();
+
+        const limitMg   = Number(config.apap_limit_mg)   || 3000;
+        const warningMg = Number(config.apap_warning_mg) || 2500;
+        const totalApap = todayLog.reduce((s, e) => s + (Number(e.apap_mg) || 0), 0);
+        const pct       = Math.min(100, (totalApap / limitMg) * 100);
+
+        const panel    = document.getElementById('med-panel');
+        const apapNum  = document.getElementById('apap-num');
+        apapNum.textContent = `APAP: ${totalApap}mg / ${limitMg}mg`;
+
+        // Thin top bar
+        document.getElementById('apap-thin-bar').style.width = pct + '%';
+
+        // Large fill bar
+        const fillBar   = document.getElementById('apap-fill-bar');
+        const fillLabel = document.getElementById('apap-fill-label');
+        fillBar.style.width      = pct + '%';
+        fillLabel.textContent    = `${totalApap}mg of ${limitMg}mg daily limit`;
+
+        let apapColor = 'var(--accent)';
+        if (totalApap >= limitMg) {
+          apapColor = 'var(--red)';
+          panel.className = 'panel alert';
+          apapNum.style.color = 'var(--red)';
+        } else if (totalApap >= warningMg) {
+          apapColor = 'var(--yellow)';
+          panel.className = 'panel warn';
+          apapNum.style.color = 'var(--yellow)';
+        } else {
+          apapNum.style.color = '';
+        }
+        fillBar.style.background = apapColor;
+        document.getElementById('apap-thin-bar').style.background = apapColor;
+
+        function lastDoseFor(medId) {
+          return todayLog.filter(e => e.med_id === medId)
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
+        }
+
+        const list = document.getElementById('med-list');
+        list.innerHTML = '';
+
+        const dueMeds  = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r === null || r <= 0; });
+        const soonMeds = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r > 0 && r < 3_600_000; });
+        const okMeds   = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r >= 3_600_000; });
+
+        if (dueMeds.length === 0 && soonMeds.length === 0) {
+          list.innerHTML = '<div class="all-clear">&#10003; all medications on schedule</div>';
+          if (totalApap < warningMg) panel.className = 'panel good';
+        }
+
+        [...dueMeds, ...soonMeds, ...okMeds].forEach(med => {
+          const last      = lastDoseFor(med.id);
+          const remaining = msRemaining(last, med.interval_hours);
+          const isDue     = remaining === null || remaining <= 0;
+          const isSoon    = remaining !== null && remaining > 0 && remaining < 3_600_000;
+
+          const item = document.createElement('div');
+          item.className = 'med-item';
+          item.innerHTML = `
+            <div>
+              <div class="med-item-name">${med.name}</div>
+              <div class="med-item-dose">${med.dose}</div>
+            </div>
+            <div class="med-badge ${isDue ? 'due' : isSoon ? 'soon' : 'ok'}">
+              ${isDue ? 'DUE NOW' : fmtCountdown(remaining)}
+            </div>
+          `;
+          list.appendChild(item);
+        });
+
+        document.getElementById('med-updated').textContent = `updated ${timeNow()}`;
+      } catch(e) {
+        document.getElementById('med-list').innerHTML =
+          '<div style="font-family:\'Share Tech Mono\',monospace;font-size:1vw;color:var(--accent)">// error loading</div>';
+      }
+    }
+
+    // ── ROM ──────────────────────────────────────────────────
+    async function loadRom() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getTodayRom`);
+        const data = await res.json();
+        const mins = data.totalMinutes || 0;
+        const pct  = Math.min(100, (mins / 240) * 100);
+        const done = mins >= 240;
+
+        const numEl = document.getElementById('rom-num');
+        numEl.textContent = fmtMins(mins);
+        numEl.style.color = done ? 'var(--green)' : 'var(--ink)';
+
+        const bar = document.getElementById('rom-bar');
+        bar.style.width      = pct + '%';
+        bar.style.background = done ? 'var(--green)' : 'var(--accent)';
+
+        document.getElementById('rom-fill-label').textContent =
+          done ? `goal reached — ${fmtMins(mins)} today` : `${Math.round(pct)}% of 4-hour goal`;
+
+        document.getElementById('rom-panel').className = done ? 'panel good' : 'panel';
+        document.getElementById('rom-updated').textContent = `updated ${timeNow()}`;
+      } catch(e) {}
+    }
+
+    // ── PT ───────────────────────────────────────────────────
+    async function loadPt() {
+      try {
+        const [exRes, ptRes] = await Promise.all([
+          fetch(`${SCRIPT_URL}?action=getPtExercises`),
+          fetch(`${SCRIPT_URL}?action=getTodayPt`)
+        ]);
+        const exercises = await exRes.json();
+        const todaySets = await ptRes.json();
+
+        const total    = exercises.length;
+        const complete = exercises.filter(ex => (todaySets[ex.id] || 0) >= ex.sets).length;
+        const allDone  = complete === total && total > 0;
+        const pct      = total > 0 ? Math.round((complete / total) * 100) : 0;
+
+        const list = document.getElementById('ex-list');
+        list.innerHTML = '';
+
+        exercises.forEach(ex => {
+          const done    = Math.min(todaySets[ex.id] || 0, ex.sets);
+          const full    = done >= ex.sets;
+          const exPct   = ex.sets > 0 ? Math.min(100, (done / ex.sets) * 100) : 0;
+          const barColor = full ? 'var(--green)' : done > 0 ? 'var(--accent)' : 'transparent';
+
+          const item = document.createElement('div');
+          item.className = 'ex-item';
+          item.innerHTML = `
+            <div class="ex-check ${full ? 'done' : ''}">${full ? '✓' : ''}</div>
+            <div class="ex-name">${ex.name}</div>
+            <div class="ex-bar-bg"><div class="ex-bar-inner" style="width:${exPct}%;background:${barColor}"></div></div>
+            <div class="ex-sets ${full ? 'done' : ''}">${done}/${ex.sets}</div>
+          `;
+          list.appendChild(item);
+        });
+
+        // Overall fill bar
+        const fillBar   = document.getElementById('pt-fill-bar');
+        fillBar.style.width      = pct + '%';
+        fillBar.style.background = allDone ? 'var(--green)' : complete > 0 ? 'var(--accent)' : 'var(--border-bright)';
+        document.getElementById('pt-fill-label').textContent =
+          `${complete} of ${total} exercises complete`;
+
+        document.getElementById('pt-panel').className = allDone ? 'panel good' : complete > 0 ? 'panel warn' : 'panel';
+        document.getElementById('pt-updated').textContent = `updated ${timeNow()}`;
+      } catch(e) {}
+    }
+
+    // ── Appointments ─────────────────────────────────────────
+    async function loadAppt() {
+      try {
+        const res   = await fetch(`${SCRIPT_URL}?action=getAppointments`);
+        const appts = await res.json();
+
+        const content = document.getElementById('appt-content');
+        const panel   = document.getElementById('appt-panel');
+
+        if (!appts.length) {
+          content.innerHTML = '<div class="no-appt">// no upcoming appointments</div>';
+          return;
+        }
+
+        const next     = appts[0];
+        const apptDate = new Date(next.date + 'T00:00:00');
+        const today    = new Date(); today.setHours(0,0,0,0);
+        const days     = Math.round((apptDate - today) / 86400000);
+        const daysStr  = days === 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : `IN ${days} DAYS`;
+        const dateStr  = apptDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        panel.className = days <= 1 ? 'panel alert' : days <= 7 ? 'panel warn' : 'panel';
+
+        content.innerHTML = `
+          <div class="appt-days">// ${daysStr}</div>
+          <div class="appt-name">${next.title}</div>
+          <div class="appt-detail">
+            <span>${dateStr}</span><br>
+            ${next.time ? `<span>${next.time}</span><br>` : ''}
+            ${next.location_name ? next.location_name : ''}
+            ${next.location_address ? `<br>${next.location_address}` : ''}
+          </div>
+        `;
+
+        if (appts.length > 1) {
+          const second     = appts[1];
+          const secondDate = new Date(second.date + 'T00:00:00');
+          const secondDays = Math.round((secondDate - today) / 86400000);
+          content.innerHTML += `
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+              <div style="font-family:'Share Tech Mono',monospace;font-size:0.8vw;color:var(--muted);margin-bottom:3px">// then in ${secondDays} days</div>
+              <div style="font-weight:700;font-size:1.1vw;letter-spacing:1px;text-transform:uppercase">${second.title}</div>
+            </div>
+          `;
+        }
+
+        document.getElementById('appt-updated').textContent = `updated ${timeNow()}`;
+      } catch(e) {}
+    }
+
+    // ── Pain ─────────────────────────────────────────────────
+    async function loadPain() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getTodayPain`);
+        const data = await res.json();
+
+        const numEl = document.getElementById('topbar-pain-num');
+
+        if (!data.entries || data.entries.length === 0) {
+          numEl.textContent = '—';
+          numEl.style.color = 'var(--muted)';
+          return;
+        }
+
+        const avg   = data.average;
+        numEl.textContent = avg + '/10';
+        numEl.style.color = painColor(avg);
+      } catch(e) {}
+    }
+
+    // ── Cold Therapy ─────────────────────────────────────────
+    async function loadCold() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
+        const data = await res.json();
+
+        const sessions = data.sessions || [];
+        const panel    = document.getElementById('cold-panel');
+        const agoEl    = document.getElementById('cold-ago');
+        const countEl  = document.getElementById('cold-sessions-num');
+
+        const complete = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
+        countEl.textContent = complete + (complete === 1 ? ' session' : ' sessions');
+
+        if (sessions.length === 0) {
+          agoEl.textContent  = 'none yet';
+          agoEl.style.color  = 'var(--muted)';
+          panel.style.borderTopColor = 'var(--border-bright)';
+          document.getElementById('cold-updated').textContent = `updated ${timeNow()}`;
+          return;
+        }
+
+        const latest = sessions.reduce((best, s) =>
+          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
+        );
+        const msAgo    = Date.now() - new Date(latest.timestamp).getTime();
+        const totalMin = Math.floor(msAgo / 60000);
+        let agoStr;
+        if (totalMin < 2)  agoStr = 'just now';
+        else if (totalMin < 60) agoStr = `${totalMin}m ago`;
+        else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
+
+        agoEl.textContent = agoStr;
+
+        const hoursAgo = msAgo / 3_600_000;
+        const iceColor = hoursAgo < 3 ? 'var(--green)' : hoursAgo < 6 ? 'var(--yellow)' : 'var(--accent)';
+        agoEl.style.color          = iceColor;
+        panel.style.borderTopColor = iceColor;
+
+        document.getElementById('cold-updated').textContent = `updated ${timeNow()}`;
+      } catch(e) {
+        document.getElementById('cold-ago').textContent = '//err';
+      }
+    }
+
+    // ── Load all ─────────────────────────────────────────────
+    function loadAll() {
+      loadMeds();
+      loadRom();
+      loadPt();
+      loadAppt();
+      loadPain();
+      loadCold();
+    }
+
+    loadAll();
+    setInterval(loadAll, 300_000);
+  </script>
+</body>
+</html>

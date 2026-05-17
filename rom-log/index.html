@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROM Log</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --border-bright: #3a3f47;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --yellow: #f59e0b;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 24px 16px 32px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header h1 span { color: var(--accent); }
+
+    .header p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    .status-dot.running::before {
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Progress section */
+    .progress-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+    }
+
+    .progress-card::after {
+      display: none;
+    }
+
+    .progress-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-total {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 28px;
+      color: var(--ink);
+      margin-bottom: 12px;
+      transition: color 0.3s;
+    }
+
+    .progress-total.done { color: var(--green); }
+
+    .progress-bar-bg {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      height: 10px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 10px;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.4s, background 0.4s;
+      border-radius: 2px;
+    }
+
+    .progress-bar.done { background: var(--green); }
+
+    /* Timer display */
+    .timer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .timer-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .timer-display {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 48px;
+      color: var(--border-bright);
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+      transition: color 0.3s;
+    }
+
+    .timer-display.running { color: var(--accent); }
+
+    #session-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 20px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.08s;
+      min-height: 72px;
+    }
+
+    #session-btn:active { transform: scale(0.99); }
+    #session-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+    #session-btn.stop { background: #1e3a2a; border: 1px solid var(--green); color: var(--green); }
+
+    .toast {
+      display: none;
+      margin-top: 12px;
+      padding: 8px 12px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    .toast.success { background: var(--green-dim); color: var(--green); border: 1px solid #166534; display: block; }
+    .toast.error   { background: rgba(224,92,26,0.1); color: var(--accent); border: 1px solid var(--accent-dim); display: block; }
+
+    /* Session history */
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 0 12px;
+    }
+
+    .sep-line { flex: 1; height: 1px; background: var(--border); }
+
+    .sep span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--border-bright);
+      text-transform: uppercase;
+    }
+
+    .session-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      margin-bottom: 8px;
+    }
+
+    .session-time {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .session-dur {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .no-sessions {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--border-bright);
+      padding: 4px 0;
+    }
+
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+
+    <div class="header">
+      <div>
+        <h1>ROM <span>LOG</span></h1>
+        <p>Range of motion machine</p>
+      </div>
+      <div class="status-dot" id="status-dot">IDLE</div>
+    </div>
+
+    <!-- Daily progress -->
+    <div class="progress-card">
+      <div class="progress-label">// Today's total</div>
+      <div class="progress-total" id="progress-total">0h 00m / 4h 00m</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Timer -->
+    <div class="timer-card">
+      <div class="timer-label" id="timer-label">// Current session</div>
+      <div class="timer-display" id="timer-display">00:00:00</div>
+      <button id="session-btn" onclick="toggleSession()">&#9654;&nbsp; Start Session</button>
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- Session history -->
+    <div class="sep"><div class="sep-line"></div><span>Today's sessions</span><div class="sep-line"></div></div>
+    <div id="session-list"></div>
+
+    <div class="footer">
+      <span id="footer-time">—</span>
+      <span>goal: 4h / day</span>
+    </div>
+
+  </div>
+
+  <script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+    const TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
+    const GOAL_MINUTES = 240;
+
+    function checkGoalNotification(totalMinutes) {
+      if (totalMinutes < GOAL_MINUTES) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const sentOn = localStorage.getItem('romGoalNotifiedDate');
+      if (sentOn === today) return;
+      localStorage.setItem('romGoalNotifiedDate', today);
+      fetch(`https://ntfy.sh/${TOPIC}`, {
+        method: 'POST',
+        headers: { 'Title': 'Jessie', 'Priority': 'high', 'Content-Type': 'text/plain' },
+        body: 'ROM goal reached! 4 hours completed today.'
+      });
+    }
+
+    let sessionStart = null;
+    let timerInterval = null;
+    let completedMinutesToday = 0;
+
+    // Restore session if page was refreshed mid-session
+    const saved = localStorage.getItem('romSessionStart');
+    if (saved) sessionStart = Number(saved);
+
+    function fmtTimer(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function fmtMinutes(mins) {
+      const h = Math.floor(mins / 60);
+      const m = Math.round(mins % 60);
+      return `${h}h ${String(m).padStart(2, '0')}m`;
+    }
+
+    function fmtTimeOfDay(datetimeStr) {
+      const d = new Date(datetimeStr);
+      if (isNaN(d)) return datetimeStr;
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function updateProgressUI(extraMinutes = 0) {
+      const total = completedMinutesToday + extraMinutes;
+      const pct   = Math.min(100, (total / GOAL_MINUTES) * 100);
+      const done  = total >= GOAL_MINUTES;
+
+      document.getElementById('progress-total').textContent =
+        `${fmtMinutes(total)} / 4h 00m`;
+      document.getElementById('progress-total').className =
+        'progress-total' + (done ? ' done' : '');
+
+      const bar = document.getElementById('progress-bar');
+      bar.style.width = pct + '%';
+      bar.className = 'progress-bar' + (done ? ' done' : '');
+    }
+
+    function startTimerTick() {
+      timerInterval = setInterval(() => {
+        const elapsed    = Date.now() - sessionStart;
+        const elapsedMin = elapsed / 60000;
+        document.getElementById('timer-display').textContent = fmtTimer(elapsed);
+        updateProgressUI(elapsedMin);
+      }, 1000);
+    }
+
+    function toggleSession() {
+      if (sessionStart === null) {
+        // Start
+        sessionStart = Date.now();
+        localStorage.setItem('romSessionStart', sessionStart);
+
+        const btn = document.getElementById('session-btn');
+        btn.innerHTML = '&#9632;&nbsp; Stop Session';
+        btn.className = 'stop';
+
+        document.getElementById('timer-display').className = 'timer-display running';
+        document.getElementById('timer-label').textContent = '// Session in progress';
+        document.getElementById('status-dot').textContent = 'RUNNING';
+        document.getElementById('status-dot').className = 'status-dot running';
+        document.getElementById('toast').className = 'toast';
+
+        startTimerTick();
+      } else {
+        // Stop
+        stopSession();
+      }
+    }
+
+    async function stopSession() {
+      const endTime        = Date.now();
+      const durationMs     = endTime - sessionStart;
+      const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
+
+      clearInterval(timerInterval);
+      timerInterval = null;
+
+      const btn = document.getElementById('session-btn');
+      btn.disabled = true;
+      btn.textContent = '... Saving';
+      btn.className = '';
+
+      const startIso = new Date(sessionStart).toLocaleString('en-US');
+      const endIso   = new Date(endTime).toLocaleString('en-US');
+
+      try {
+        const url = `${SCRIPT_URL}?action=logRomSession` +
+          `&startTime=${encodeURIComponent(startIso)}` +
+          `&endTime=${encodeURIComponent(endIso)}` +
+          `&durationMinutes=${durationMinutes}`;
+
+        const res  = await fetch(url);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        completedMinutesToday += durationMinutes;
+        checkGoalNotification(completedMinutesToday);
+        sessionStart = null;
+        localStorage.removeItem('romSessionStart');
+
+        document.getElementById('timer-display').textContent = '00:00:00';
+        document.getElementById('timer-display').className = 'timer-display';
+        document.getElementById('timer-label').textContent = '// Current session';
+        document.getElementById('status-dot').textContent = 'IDLE';
+        document.getElementById('status-dot').className = 'status-dot';
+
+        btn.innerHTML = '&#9654;&nbsp; Start Session';
+        btn.disabled = false;
+
+        showToast(`// OK: ${fmtMinutes(durationMinutes)} session logged`, 'success');
+        updateProgressUI(0);
+        loadSessions();
+
+      } catch (err) {
+        btn.innerHTML = '&#9632;&nbsp; Stop Session';
+        btn.className = 'stop';
+        btn.disabled = false;
+        sessionStart = endTime - durationMs; // restore
+        startTimerTick();
+        showToast('// ERR: failed to save — still running', 'error');
+      }
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast ${type}`;
+    }
+
+    async function loadSessions() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getTodayRom`);
+        const data = await res.json();
+
+        completedMinutesToday = data.totalMinutes || 0;
+        checkGoalNotification(completedMinutesToday);
+        updateProgressUI(sessionStart ? (Date.now() - sessionStart) / 60000 : 0);
+
+        const list = document.getElementById('session-list');
+        list.innerHTML = '';
+
+        if (!data.sessions || data.sessions.length === 0) {
+          list.innerHTML = '<div class="no-sessions">no sessions logged today</div>';
+        } else {
+          data.sessions.forEach(s => {
+            const row = document.createElement('div');
+            row.className = 'session-row';
+            row.innerHTML = `
+              <div class="session-time">${fmtTimeOfDay(s.startTime)} — ${fmtTimeOfDay(s.endTime)}</div>
+              <div class="session-dur">${fmtMinutes(s.durationMinutes)}</div>
+            `;
+            list.appendChild(row);
+          });
+        }
+
+        document.getElementById('footer-time').textContent =
+          `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()}`;
+
+      } catch (err) {
+        document.getElementById('session-list').innerHTML =
+          '<div class="no-sessions" style="color:var(--accent)">// could not load sessions</div>';
+      }
+    }
+
+    // On load — restore running session UI if needed
+    if (sessionStart !== null) {
+      const btn = document.getElementById('session-btn');
+      btn.innerHTML = '&#9632;&nbsp; Stop Session';
+      btn.className = 'stop';
+      document.getElementById('timer-display').className = 'timer-display running';
+      document.getElementById('timer-label').textContent = '// Session in progress';
+      document.getElementById('status-dot').textContent = 'RUNNING';
+      document.getElementById('status-dot').className = 'status-dot running';
+      startTimerTick();
+    }
+
+    loadSessions();
+    setInterval(loadSessions, 300_000);
+  </script>
+</body>
+</html>

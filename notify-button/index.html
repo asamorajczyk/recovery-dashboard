@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assistance Request</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f11;
+      --surface: #161719;
+      --surface2: #1e2023;
+      --border: #2a2d32;
+      --accent: #e05c1a;
+      --accent-dim: #7a2f08;
+      --ink: #e8eaed;
+      --muted: #6b7280;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --border-bright: #3a3f47;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 39px, rgba(255,255,255,0.015) 40px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--accent);
+      border-radius: 2px;
+      width: 100%;
+      max-width: 400px;
+      padding: 28px 28px 24px;
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 20px; height: 20px;
+      border-bottom: 2px solid var(--accent-dim);
+      border-right: 2px solid var(--accent-dim);
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .header-left h1 span { color: var(--accent); }
+
+    .header-left p {
+      margin-top: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .field { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      outline: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      color: var(--ink);
+      padding: 12px 14px;
+      width: 100%;
+      resize: none;
+      height: 90px;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--border-bright); }
+
+    #send-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 22px 16px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.08s;
+      min-height: 80px;
+    }
+
+    #send-btn:active:not(:disabled) { transform: scale(0.98); }
+
+    #send-btn:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .toast {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+
+    .toast.success {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid #166534;
+      display: block;
+    }
+
+    .toast.error {
+      background: rgba(224, 92, 26, 0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+      display: block;
+    }
+
+    .footer {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="header-left">
+        <h1>ASSIST<span>ANCE</span></h1>
+        <p>Send request</p>
+      </div>
+      <div class="status-dot">READY</div>
+    </div>
+
+    <div class="field">
+      <label>// Request details &nbsp;<span style="opacity:0.5">optional</span></label>
+      <textarea id="note" placeholder="e.g. need water, dropped something..."></textarea>
+    </div>
+
+    <button id="send-btn" onclick="sendAlert()">&#9654;&nbsp; Send Request</button>
+    <div class="toast" id="toast"></div>
+
+    <div class="footer">
+      <span>v1.0</span>
+      <span>via ntfy</span>
+    </div>
+  </div>
+
+  <script>
+    const TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
+
+    let cooldown = false;
+
+    async function sendAlert() {
+      if (cooldown) return;
+
+      const btn  = document.getElementById('send-btn');
+      const note = document.getElementById('note').value.trim();
+      const toast = document.getElementById('toast');
+
+      cooldown = true;
+      btn.disabled = true;
+      btn.textContent = '... Sending';
+      toast.className = 'toast';
+
+      try {
+        await fetch(`https://ntfy.sh/${TOPIC}`, {
+          method: 'POST',
+          headers: {
+            'Title': 'Jessie',
+            'Priority': 'high',
+            'Content-Type': 'text/plain'
+          },
+          body: note || 'No details provided'
+        });
+
+        btn.innerHTML = '&#10003;&nbsp; Request Sent';
+        toast.textContent = '// OK: request sent';
+        toast.className = 'toast success';
+
+        document.getElementById('note').value = '';
+
+        setTimeout(() => {
+          btn.innerHTML = '&#9654;&nbsp; Send Request';
+          btn.disabled = false;
+          toast.className = 'toast';
+          cooldown = false;
+        }, 10000);
+
+      } catch (err) {
+        btn.innerHTML = '&#9654;&nbsp; Send Request';
+        btn.disabled = false;
+        toast.textContent = '// ERR: failed to send — tap to retry';
+        toast.className = 'toast error';
+        cooldown = false;
+      }
+    }
+  </script>
+</body>
+</html>
