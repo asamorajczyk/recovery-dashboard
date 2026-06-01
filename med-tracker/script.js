@@ -43,13 +43,16 @@ function getMeds() {
     if (!row[0]) continue;
     const active = row[6];
     if (active === true || String(active).toUpperCase() === 'TRUE') {
+      const asNeeded = row[7];
       meds.push({
         id:             String(row[0]),
         name:           String(row[1]),
         dose:           String(row[2]),
-        apap_mg:        Number(row[3]) || 0,
+        num_pills:      Number(row[3]) || 0,
         interval_hours: Number(row[4]) || 6,
-        color:          String(row[5])
+        color:          String(row[5]),
+        as_needed:      asNeeded === true || String(asNeeded).toUpperCase() === 'TRUE',
+        notes:          String(row[8] || '')
       });
     }
   }
@@ -77,7 +80,7 @@ function getTodayLog() {
         med_id:    String(row[1]),
         med_name:  String(row[2]),
         dose:      String(row[3]),
-        apap_mg:   Number(row[4]) || 0
+        num_pills: Number(row[4]) || 0
       });
     }
   }
@@ -109,7 +112,7 @@ function logDose(params) {
         id:      String(medsData[i][0]),
         name:    String(medsData[i][1]),
         dose:    String(medsData[i][2]),
-        apap_mg: Number(medsData[i][3]) || 0
+        num_pills: Number(medsData[i][3]) || 0
       };
       break;
     }
@@ -121,7 +124,7 @@ function logDose(params) {
   const tz = Session.getScriptTimeZone();
   const timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
 
-  logSheet.appendRow([timestamp, med.id, med.name, med.dose, med.apap_mg]);
+  logSheet.appendRow([timestamp, med.id, med.name, med.dose, med.num_pills]);
 
   return { success: true, timestamp, med: med.name };
 }

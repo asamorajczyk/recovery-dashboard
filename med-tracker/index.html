@@ -179,6 +179,7 @@
     }
 
     .med-status.soon { color: var(--yellow); }
+    .med-status.as-needed { color: var(--muted); font-size: 10px; letter-spacing: 0.15em; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -355,41 +356,13 @@
       return `${h}h ${String(m).padStart(2, '0')}m`;
     }
 
-    function render() {
-      const list = document.getElementById('med-list');
-      list.innerHTML = '';
+    function renderCard(med, list) {
+      const last = lastDoseFor(med.id);
 
-      const dueMeds  = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r === null || r <= 0; });
-      const soonMeds = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r > 0 && r < 3_600_000; });
-      const okMeds   = meds.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r >= 3_600_000; });
-
-      [...dueMeds, ...soonMeds, ...okMeds].forEach(med => {
-        const last      = lastDoseFor(med.id);
-        const remaining = msRemaining(last, med.interval_hours);
-        const isDue     = remaining === null || remaining <= 0;
-
-        let statusClass = '';
-        let statusText  = '— not taken today';
-
-        if (remaining !== null) {
-          if (remaining <= 0) {
-            statusClass = 'due';
-            statusText  = 'DUE NOW';
-          } else if (remaining < 3_600_000) {
-            statusClass = 'soon';
-            statusText  = formatCountdown(remaining);
-          } else {
-            statusText = formatCountdown(remaining);
-          }
-        } else {
-          statusClass = 'due';
-          statusText  = 'DUE NOW';
-        }
-
+      if (med.as_needed) {
         const card = document.createElement('div');
-        card.className = 'med-card' + (isDue ? ' card-due' : '');
-        card.style.borderLeftColor = isDue ? 'var(--accent)' : med.color;
-
+        card.className = 'med-card';
+        card.style.borderLeftColor = med.color;
         card.innerHTML = `
           <div class="med-info">
             <div class="med-name">${med.name}</div>
@@ -397,13 +370,76 @@
             ${last ? `<div class="med-last">${timeAgo(last.timestamp)}</div>` : ''}
           </div>
           <div class="med-card-right">
-            <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
+            <div class="med-status as-needed">AS NEEDED</div>
             <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
           </div>
         `;
-
         list.appendChild(card);
-      });
+        return;
+      }
+
+      const remaining = msRemaining(last, med.interval_hours);
+      const isDue     = remaining === null || remaining <= 0;
+
+      let statusClass = '';
+      let statusText  = '— not taken today';
+
+      if (remaining !== null) {
+        if (remaining <= 0) {
+          statusClass = 'due';
+          statusText  = 'DUE NOW';
+        } else if (remaining < 3_600_000) {
+          statusClass = 'soon';
+          statusText  = formatCountdown(remaining);
+        } else {
+          statusText = formatCountdown(remaining);
+        }
+      } else {
+        statusClass = 'due';
+        statusText  = 'DUE NOW';
+      }
+
+      const card = document.createElement('div');
+      card.className = 'med-card' + (isDue ? ' card-due' : '');
+      card.style.borderLeftColor = isDue ? 'var(--accent)' : med.color;
+      card.innerHTML = `
+        <div class="med-info">
+          <div class="med-name">${med.name}</div>
+          <div class="med-dose">${med.dose}</div>
+          ${last ? `<div class="med-last">${timeAgo(last.timestamp)}</div>` : ''}
+        </div>
+        <div class="med-card-right">
+          <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
+          <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
+        </div>
+      `;
+      list.appendChild(card);
+    }
+
+    function makeSep(label) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      sep.innerHTML = `<div class="sep-line"></div><span>${label}</span><div class="sep-line"></div>`;
+      return sep;
+    }
+
+    function render() {
+      const list = document.getElementById('med-list');
+      list.innerHTML = '';
+
+      const scheduled  = meds.filter(m => !m.as_needed);
+      const asNeeded   = meds.filter(m => m.as_needed);
+
+      const dueMeds  = scheduled.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r === null || r <= 0; });
+      const soonMeds = scheduled.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r > 0 && r < 3_600_000; });
+      const okMeds   = scheduled.filter(m => { const r = msRemaining(lastDoseFor(m.id), m.interval_hours); return r !== null && r >= 3_600_000; });
+
+      [...dueMeds, ...soonMeds, ...okMeds].forEach(med => renderCard(med, list));
+
+      if (asNeeded.length > 0) {
+        if (scheduled.length > 0) list.appendChild(makeSep('As Needed'));
+        asNeeded.forEach(med => renderCard(med, list));
+      }
 
       const now = new Date();
       document.getElementById('footer-time').textContent =
@@ -416,7 +452,7 @@
     function tick() {
       document.querySelectorAll('.med-status[data-med-id]').forEach(el => {
         const med  = meds.find(m => m.id === el.dataset.medId);
-        if (!med) return;
+        if (!med || med.as_needed) return;
         const last      = lastDoseFor(med.id);
         const remaining = msRemaining(last, med.interval_hours);
 
@@ -454,6 +490,13 @@
     const pendingConfirm = new Map(); // medId -> reset timeout handle
 
     async function manualLog(medId, btn) {
+      // As-needed meds: always log immediately, no timing check
+      const med = meds.find(m => m.id === medId);
+      if (med && med.as_needed) {
+        await doLog(medId, btn);
+        return;
+      }
+
       // Second tap — already warned, now log
       if (pendingConfirm.has(medId)) {
         clearTimeout(pendingConfirm.get(medId));
