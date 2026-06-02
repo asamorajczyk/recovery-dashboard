@@ -41,7 +41,8 @@ function doGet(e) {
     else if (action === 'getTodayPain')      result = getTodayPain();
     else if (action === 'getMilestones')     result = getMilestones();
     else if (action === 'getWeekStats')      result = getWeekStats();
-    else if (action === 'logColdTherapy')    result = logColdTherapy(e.parameter);
+    else if (action === 'startColdTherapy')  result = startColdTherapy();
+    else if (action === 'stopColdTherapy')   result = stopColdTherapy(e.parameter);
     else if (action === 'getColdTherapyLog') result = getColdTherapyLog();
     else result = { error: 'Unknown action: ' + action };
   } catch (err) {
@@ -155,7 +156,7 @@ function logDose(params) {
 
   const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
   const tz = Session.getScriptTimeZone();
-  const now = new Date();
+  const now = params.timestamp ? new Date(params.timestamp) : new Date();
   const dateVal = Utilities.formatDate(now, tz, 'M/d/yyyy');
   const timeVal = Utilities.formatDate(now, tz, 'h:mm a');
   const timestamp = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
@@ -373,26 +374,46 @@ function getTodayPain() {
   return { entries, average };
 }
 
-function logColdTherapy(params) {
+function startColdTherapy() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
+  const tz    = Session.getScriptTimeZone();
+  const now   = new Date();
+
+  // Columns: Start Date | Start Time | End Date | End Time | Duration (hours) | Status
+  sheet.appendRow([
+    Utilities.formatDate(now, tz, 'M/d/yyyy'),
+    Utilities.formatDate(now, tz, 'h:mm a'),
+    '', '', '',
+    'In Progress'
+  ]);
+
+  return { success: true };
+}
+
+function stopColdTherapy(params) {
   const durationSec = Number(params.duration_sec);
   if (!durationSec) return { error: 'duration_sec required' };
 
-  const sheet  = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
-  const tz     = Session.getScriptTimeZone();
-  const endNow = new Date();
-  const startNow = new Date(endNow.getTime() - durationSec * 1000);
+  const sheet    = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
+  const tz       = Session.getScriptTimeZone();
+  const now      = new Date();
+  const data     = sheet.getDataRange().getValues();
+  const endDate  = Utilities.formatDate(now, tz, 'M/d/yyyy');
+  const endTime  = Utilities.formatDate(now, tz, 'h:mm a');
+  const durHours = Math.round((durationSec / 3600) * 10000) / 10000;
 
-  const startDateVal  = Utilities.formatDate(startNow, tz, 'M/d/yyyy');
-  const startTimeVal  = Utilities.formatDate(startNow, tz, 'h:mm a');
-  const endDateVal    = Utilities.formatDate(endNow,   tz, 'M/d/yyyy');
-  const endTimeVal    = Utilities.formatDate(endNow,   tz, 'h:mm a');
-  const durationHours = Math.round((durationSec / 3600) * 10000) / 10000;
+  // Find the last In Progress row and fill it in
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][5]).trim().toLowerCase() === 'in progress') {
+      sheet.getRange(i + 1, 3).setValue(endDate);
+      sheet.getRange(i + 1, 4).setValue(endTime);
+      sheet.getRange(i + 1, 5).setValue(durHours);
+      sheet.getRange(i + 1, 6).setValue('Completed');
+      return { success: true, duration_hours: durHours };
+    }
+  }
 
-  // Columns: Start Date | Start Time | End Date | End Time | Duration (hours)
-  sheet.appendRow([startDateVal, startTimeVal, endDateVal, endTimeVal, durationHours]);
-
-  const timestamp = Utilities.formatDate(endNow, tz, 'yyyy-MM-dd HH:mm:ss');
-  return { success: true, timestamp, duration_hours: durationHours };
+  return { error: 'No in-progress session found' };
 }
 
 function getColdTherapyLog() {
@@ -408,35 +429,27 @@ function getColdTherapyLog() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    // Filter by start date (col A)
+
     const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
     if (rowDate !== todayStr) continue;
 
-    const startTs = combineDateTime_(row[0], row[1], tz);
+    const startTs    = combineDateTime_(row[0], row[1], tz);
+    const status     = String(row[5] || '').trim();
+    const inProgress = status.toLowerCase() === 'in progress';
 
-    // End timestamp: use col C+D if present, else compute from start + duration
-    let endTs;
-    if (row[2] && row[3]) {
-      endTs = combineDateTime_(row[2], row[3], tz);
-    } else {
-      const durMs  = (Number(row[4]) || 0) * 3600000;
-      const startD = (row[0] instanceof Date) ? row[0] : new Date(String(row[0]));
-      const startT = (row[1] instanceof Date) ? row[1] : new Date('2000-01-01 ' + String(row[1]));
-      const startMs = new Date(
-        startD.getFullYear(), startD.getMonth(), startD.getDate(),
-        isNaN(startT) ? 0 : startT.getHours(),
-        isNaN(startT) ? 0 : startT.getMinutes(),
-        isNaN(startT) ? 0 : startT.getSeconds()
-      ).getTime();
-      endTs = Utilities.formatDate(new Date(startMs + durMs), tz, 'yyyy-MM-dd HH:mm:ss');
+    const session = {
+      timestamp:      startTs,
+      start_iso:      new Date(startTs).toISOString(),
+      duration_hours: Number(row[4]) || 0,
+      status:         status,
+      event:          inProgress ? 'in_progress' : 'complete'
+    };
+
+    if (!inProgress && row[2] && row[3]) {
+      session.end_timestamp = combineDateTime_(row[2], row[3], tz);
     }
 
-    sessions.push({
-      timestamp:     startTs,
-      end_timestamp: endTs,
-      event:         'complete',
-      duration_hours: Number(row[4]) || 0
-    });
+    sessions.push(session);
   }
 
   return { sessions };
@@ -504,9 +517,9 @@ function getWeekStats() {
   const coldByDay = initMap();
   for (let i = 1; i < coldData.length; i++) {
     if (!coldData[i][0]) continue;
-    const ds    = Utilities.formatDate(new Date(coldData[i][0]), tz, 'yyyy-MM-dd');
-    const event = String(coldData[i][1]).trim().toLowerCase();
-    if (ds in coldByDay && event !== 'stopped') coldByDay[ds]++;
+    const ds     = Utilities.formatDate(new Date(coldData[i][0]), tz, 'yyyy-MM-dd');
+    const status = String(coldData[i][5]).trim().toLowerCase();
+    if (ds in coldByDay && status === 'completed') coldByDay[ds]++;
   }
 
   return {

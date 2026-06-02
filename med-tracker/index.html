@@ -122,10 +122,15 @@
       padding: 14px 16px;
       margin-bottom: 10px;
       display: flex;
+      flex-direction: column;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .med-card-inner {
+      display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      transition: background 0.3s, box-shadow 0.3s;
     }
 
     .med-card.card-due {
@@ -194,32 +199,18 @@
       50%       { opacity: 0.5; }
     }
 
-    /* Footer */
-    .footer {
-      margin-top: 20px;
-      display: flex;
-      justify-content: space-between;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 9px;
-      color: var(--border-bright);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .error-msg {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 12px;
-      color: var(--accent);
-      text-align: center;
-      padding: 32px 0;
-    }
-
+    /* Log buttons */
     .med-card-right {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
+      gap: 6px;
       flex-shrink: 0;
+    }
+
+    .log-btn-group {
+      display: flex;
+      gap: 4px;
     }
 
     .log-btn {
@@ -242,9 +233,7 @@
       color: var(--accent);
     }
 
-    .log-btn:active:not(:disabled) {
-      transform: scale(0.97);
-    }
+    .log-btn:active:not(:disabled) { transform: scale(0.97); }
 
     .log-btn:disabled {
       opacity: 0.35;
@@ -254,6 +243,135 @@
     .log-btn.success {
       border-color: var(--green);
       color: var(--green);
+    }
+
+    .log-btn.warn {
+      border-color: var(--yellow);
+      color: var(--yellow);
+    }
+
+    .log-past-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--border-bright);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .log-past-btn:hover:not(:disabled) {
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+
+    .log-past-btn:active:not(:disabled) { transform: scale(0.97); }
+
+    .log-past-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Custom time panel */
+    .custom-log-panel {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .custom-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .custom-log-panel input[type="datetime-local"] {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      border-radius: 2px;
+      color: var(--ink);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      padding: 5px 8px;
+      outline: none;
+    }
+
+    .custom-log-panel input[type="datetime-local"]:focus {
+      border-color: var(--accent);
+    }
+
+    .custom-log-panel input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.6);
+      cursor: pointer;
+    }
+
+    .confirm-log-btn {
+      background: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: 2px;
+      color: var(--accent);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .confirm-log-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+
+    .confirm-log-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .confirm-log-btn.success {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .custom-cancel {
+      display: block;
+      margin-top: 6px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: right;
+      text-decoration: underline;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .error-msg {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      text-align: center;
+      padding: 32px 0;
     }
 
     .toast {
@@ -280,12 +398,6 @@
     .toast.toast-ok   { border-color: var(--green);  color: var(--green); }
     .toast.toast-err  { border-color: var(--accent);  color: var(--accent); }
     .toast.toast-warn { border-color: var(--yellow);  color: var(--yellow); }
-
-    .log-btn.warn {
-      border-color: var(--yellow);
-      color: var(--yellow);
-    }
-
   </style>
 </head>
 <body>
@@ -321,21 +433,25 @@
 
     let meds         = [];
     let todayLog     = [];
-    let lastDosesMap = {};  // { medId: 'yyyy-MM-dd HH:mm:ss' } from full log history
+    let lastDosesMap = {};
     let tickInterval = null;
 
-    // Backend returns timestamps as 'yyyy-MM-dd HH:mm:ss' (space, not T).
-    // Normalize before passing to Date() so all browsers parse it as local time.
     function parseTs(ts) {
       return new Date(String(ts).replace(' ', 'T'));
     }
 
+    function toLocalInputValue(date) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
     async function loadData() {
       try {
+        const t = Date.now();
         const [medsRes, logRes, lastDosesRes] = await Promise.all([
-          fetch(`${SCRIPT_URL}?action=getMeds`),
-          fetch(`${SCRIPT_URL}?action=getTodayLog`),
-          fetch(`${SCRIPT_URL}?action=getLastDoses`)
+          fetch(`${SCRIPT_URL}?action=getMeds&_=${t}`),
+          fetch(`${SCRIPT_URL}?action=getTodayLog&_=${t}`),
+          fetch(`${SCRIPT_URL}?action=getLastDoses&_=${t}`)
         ]);
 
         meds         = await medsRes.json();
@@ -350,13 +466,10 @@
     }
 
     function lastDoseFor(medId) {
-      // Check today's log first (has full dose details)
       const todayEntry = todayLog
         .filter(e => e.med_id === medId)
         .sort((a, b) => parseTs(b.timestamp) - parseTs(a.timestamp))[0];
       if (todayEntry) return todayEntry;
-
-      // Fall back to most recent dose across all history (covers previous days)
       const ts = lastDosesMap[medId];
       return ts ? { timestamp: ts, med_id: medId } : null;
     }
@@ -385,23 +498,43 @@
 
     function renderCard(med, list) {
       const last = lastDoseFor(med.id);
+      const card = document.createElement('div');
+
+      const logBtns = `
+        <div class="log-btn-group">
+          <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
+          <button class="log-past-btn" onclick="toggleCustomLog('${med.id}')">PAST</button>
+        </div>`;
+
+      const customPanel = `
+        <div class="custom-log-panel" id="cpanel-${med.id}">
+          <div class="custom-row">
+            <input type="datetime-local" id="ctime-${med.id}" />
+            <button class="confirm-log-btn" onclick="doLogCustom('${med.id}')">OK</button>
+          </div>
+          <span class="custom-cancel" onclick="toggleCustomLog('${med.id}')">&#8592; cancel</span>
+        </div>`;
+
+      const lastLine = last ? `<div class="med-last" data-timestamp="${last.timestamp}">last dose: ${timeAgo(last.timestamp)}</div>` : '';
+      const notesLine = med.notes ? `<div class="med-notes">${med.notes}</div>` : '';
 
       if (med.as_needed) {
-        const card = document.createElement('div');
         card.className = 'med-card';
         card.style.borderLeftColor = med.color;
         card.innerHTML = `
-          <div class="med-info">
-            <div class="med-name">${med.name}</div>
-            <div class="med-dose">${med.dose}</div>
-            ${med.notes ? `<div class="med-notes">${med.notes}</div>` : ''}
-            ${last ? `<div class="med-last" data-timestamp="${last.timestamp}">last dose: ${timeAgo(last.timestamp)}</div>` : ''}
+          <div class="med-card-inner">
+            <div class="med-info">
+              <div class="med-name">${med.name}</div>
+              <div class="med-dose">${med.dose}</div>
+              ${notesLine}
+              ${lastLine}
+            </div>
+            <div class="med-card-right">
+              <div class="med-status as-needed">AS NEEDED</div>
+              ${logBtns}
+            </div>
           </div>
-          <div class="med-card-right">
-            <div class="med-status as-needed">AS NEEDED</div>
-            <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
-          </div>
-        `;
+          ${customPanel}`;
         list.appendChild(card);
         return;
       }
@@ -427,21 +560,22 @@
         statusText  = 'DUE NOW';
       }
 
-      const card = document.createElement('div');
       card.className = 'med-card' + (isDue ? ' card-due' : '');
       card.style.borderLeftColor = isDue ? 'var(--accent)' : med.color;
       card.innerHTML = `
-        <div class="med-info">
-          <div class="med-name">${med.name}</div>
-          <div class="med-dose">${med.dose}</div>
-          ${med.notes ? `<div class="med-notes">${med.notes}</div>` : ''}
-          ${last ? `<div class="med-last" data-timestamp="${last.timestamp}">last dose: ${timeAgo(last.timestamp)}</div>` : ''}
+        <div class="med-card-inner">
+          <div class="med-info">
+            <div class="med-name">${med.name}</div>
+            <div class="med-dose">${med.dose}</div>
+            ${notesLine}
+            ${lastLine}
+          </div>
+          <div class="med-card-right">
+            <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
+            ${logBtns}
+          </div>
         </div>
-        <div class="med-card-right">
-          <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
-          <button class="log-btn" data-med-id="${med.id}" onclick="manualLog('${med.id}', this)">+ LOG</button>
-        </div>
-      `;
+        ${customPanel}`;
       list.appendChild(card);
     }
 
@@ -485,9 +619,7 @@
         if (!med || med.as_needed) return;
         const last      = lastDoseFor(med.id);
         const remaining = msRemaining(last, med.interval_hours);
-
         if (remaining === null) return;
-
         if (remaining <= 0) {
           el.className = 'med-status due';
           el.textContent = 'DUE NOW';
@@ -521,30 +653,27 @@
       return h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
     }
 
-    const pendingConfirm = new Map(); // medId -> reset timeout handle
+    const pendingConfirm = new Map();
 
     async function manualLog(medId, btn) {
-      // As-needed meds: always log immediately, no timing check
       const med = meds.find(m => m.id === medId);
       if (med && med.as_needed) {
-        await doLog(medId, btn);
+        await submitLog(medId, btn, null);
         return;
       }
 
-      // Second tap — already warned, now log
       if (pendingConfirm.has(medId)) {
         clearTimeout(pendingConfirm.get(medId));
         pendingConfirm.delete(medId);
-        await doLog(medId, btn);
+        await submitLog(medId, btn, null);
         return;
       }
 
-      // First tap — check timing
       btn.disabled = true;
       btn.textContent = '...';
 
       try {
-        const res  = await fetch(`${SCRIPT_URL}?action=getLastDose&medId=${encodeURIComponent(medId)}`);
+        const res  = await fetch(`${SCRIPT_URL}?action=getLastDose&medId=${encodeURIComponent(medId)}&_=${Date.now()}`);
         const data = await res.json();
 
         let tooEarly  = false;
@@ -566,7 +695,6 @@
             'toast-warn',
             8000
           );
-          // Auto-reset if ignored
           const timer = setTimeout(() => {
             if (pendingConfirm.has(medId)) {
               pendingConfirm.delete(medId);
@@ -576,7 +704,7 @@
           }, 8000);
           pendingConfirm.set(medId, timer);
         } else {
-          await doLog(medId, btn);
+          await submitLog(medId, btn, null);
         }
       } catch (err) {
         btn.disabled = false;
@@ -585,30 +713,84 @@
       }
     }
 
-    async function doLog(medId, btn) {
+    async function submitLog(medId, btn, isoTimestamp) {
+      const isCustom = !!isoTimestamp;
       btn.disabled = true;
       btn.textContent = '...';
       btn.classList.remove('warn');
 
-      try {
-        const res  = await fetch(`${SCRIPT_URL}?action=logDose&medId=${encodeURIComponent(medId)}`);
-        const data = await res.json();
+      const url = `${SCRIPT_URL}?action=logDose&medId=${encodeURIComponent(medId)}`
+        + (isCustom ? `&timestamp=${encodeURIComponent(isoTimestamp)}` : '');
 
+      try {
+        const res  = await fetch(url);
+        const data = await res.json();
         if (data.error) throw new Error(data.error);
 
         notifiedMeds.delete(medId);
         btn.textContent = '✓ LOGGED';
         btn.classList.add('success');
-        showToast(
-          `// OK: ${data.med} logged at ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
-          'toast-ok'
-        );
-        setTimeout(() => loadData(), 1500);
+
+        const when = isCustom
+          ? new Date(isoTimestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          : new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        showToast(`// OK: ${data.med} logged at ${when}`, 'toast-ok');
+
+        // Immediately update local state from server's returned timestamp so
+        // the display reflects the new dose without waiting for a network roundtrip.
+        if (data.timestamp) {
+          lastDosesMap[medId] = data.timestamp;
+          const todayLocal = new Date().toLocaleDateString('sv-SE'); // "2026-06-02"
+          if (data.timestamp.startsWith(todayLocal)) {
+            const m = meds.find(m => m.id === medId);
+            if (m) todayLog.push({ timestamp: data.timestamp, med_id: medId, med_name: m.name, dose: m.dose, num_pills: m.num_pills });
+          }
+          render();
+        }
+        setTimeout(() => loadData(), 3000);
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = '+ LOG';
+        btn.textContent = isCustom ? 'OK' : '+ LOG';
         showToast('// ERR: failed to log — tap to retry', 'toast-err');
       }
+    }
+
+    // Kept for backward compatibility (called by manualLog path above)
+    async function doLog(medId, btn) {
+      await submitLog(medId, btn, null);
+    }
+
+    function toggleCustomLog(medId) {
+      const panel = document.getElementById(`cpanel-${medId}`);
+      if (!panel) return;
+      const visible = panel.style.display === 'block';
+      if (visible) {
+        panel.style.display = 'none';
+        const btn = panel.querySelector('.confirm-log-btn');
+        if (btn) { btn.disabled = false; btn.textContent = 'OK'; btn.classList.remove('success'); }
+      } else {
+        const input = document.getElementById(`ctime-${medId}`);
+        if (input) input.value = toLocalInputValue(new Date());
+        panel.style.display = 'block';
+      }
+    }
+
+    async function doLogCustom(medId) {
+      const input = document.getElementById(`ctime-${medId}`);
+      const btn   = document.getElementById(`cpanel-${medId}`).querySelector('.confirm-log-btn');
+
+      if (!input || !input.value) {
+        showToast('// ERR: select a date and time first', 'toast-err');
+        return;
+      }
+
+      const d = new Date(input.value);
+      if (isNaN(d.getTime())) {
+        showToast('// ERR: invalid date/time', 'toast-err');
+        return;
+      }
+
+      await submitLog(medId, btn, d.toISOString());
     }
 
     // --- ntfy notifications ---

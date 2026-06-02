@@ -400,7 +400,8 @@
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
     const TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
 
-    let cooldown = false;
+    let cooldown    = false;
+    let coldTickId  = null;
 
     // ── Clock ────────────────────────────────────────────────
     function updateClock() {
@@ -645,44 +646,69 @@
       try {
         const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
         const data = await res.json();
-
-        const sessions = data.sessions || [];
-        const blurb    = document.getElementById('cold-blurb');
-        const card     = document.getElementById('cold-card');
-
-        if (sessions.length === 0) {
-          blurb.textContent = 'no sessions today — tap to start';
-          card.style.borderLeftColor = 'var(--ice)';
-          return;
-        }
-
-        function parseTs(ts) { return new Date(String(ts).replace(' ', 'T')); }
-        const latest = sessions.reduce((best, s) => {
-          const tsA = s.end_timestamp || s.timestamp;
-          const tsB = best.end_timestamp || best.timestamp;
-          return parseTs(tsA) > parseTs(tsB) ? s : best;
-        });
-        const latestTs = latest.end_timestamp || latest.timestamp;
-        const msAgo    = Date.now() - parseTs(latestTs).getTime();
-        const totalMin = Math.floor(msAgo / 60000);
-        let agoStr;
-        if (totalMin < 2)  agoStr = 'just now';
-        else if (totalMin < 60) agoStr = `${totalMin}m ago`;
-        else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
-
-        const complete    = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-        const totalHours  = sessions.reduce((sum, s) => sum + (Number(s.duration_hours) || 0), 0);
-        const totalH      = Math.floor(totalHours);
-        const totalMrem   = Math.round((totalHours - totalH) * 60);
-        const totalStr    = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${Math.round(totalHours * 60)}m`;
-
-        blurb.innerHTML = `last ice: ${agoStr}<br>${complete} session${complete !== 1 ? 's' : ''} today &middot; ${totalStr}`;
-
-        card.style.borderLeftColor = 'var(--ice)';
-
+        renderColdCard(data.sessions || []);
       } catch (e) {
         document.getElementById('cold-blurb').textContent = 'tap to start 20-min icing session';
       }
+    }
+
+    function renderColdCard(sessions) {
+      const blurb = document.getElementById('cold-blurb');
+      const card  = document.getElementById('cold-card');
+
+      if (coldTickId) { clearInterval(coldTickId); coldTickId = null; }
+
+      if (sessions.length === 0) {
+        blurb.textContent = 'no sessions today — tap to start';
+        card.style.borderLeftColor = 'var(--ice)';
+        return;
+      }
+
+      function parseTs(ts) { return new Date(String(ts).replace(' ', 'T')); }
+
+      const inProgress = sessions.find(s => (s.status || '').toLowerCase() === 'in progress');
+      if (inProgress) {
+        const startMs = new Date(inProgress.start_iso || inProgress.timestamp).getTime();
+        function updateBlurb() {
+          const secs   = Math.floor((Date.now() - startMs) / 1000);
+          const h      = Math.floor(secs / 3600);
+          const m      = Math.floor((secs % 3600) / 60);
+          const durStr = h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+          blurb.innerHTML = `<span style="color:var(--ice)">&#10052; in progress &mdash; ${durStr}</span>`;
+        }
+        updateBlurb();
+        coldTickId = setInterval(updateBlurb, 60000);
+        card.style.borderLeftColor = 'var(--ice)';
+        return;
+      }
+
+      const completed = sessions.filter(s => (s.status || '').toLowerCase() !== 'in progress');
+      if (!completed.length) {
+        blurb.textContent = 'no sessions today — tap to start';
+        card.style.borderLeftColor = 'var(--ice)';
+        return;
+      }
+
+      const latest = completed.reduce((best, s) => {
+        const tsA = s.end_timestamp || s.timestamp;
+        const tsB = best.end_timestamp || best.timestamp;
+        return parseTs(tsA) > parseTs(tsB) ? s : best;
+      });
+      const latestTs = latest.end_timestamp || latest.timestamp;
+      const msAgo    = Date.now() - parseTs(latestTs).getTime();
+      const totalMin = Math.floor(msAgo / 60000);
+      let agoStr;
+      if (totalMin < 2)  agoStr = 'just now';
+      else if (totalMin < 60) agoStr = `${totalMin}m ago`;
+      else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
+
+      const totalHours = completed.reduce((sum, s) => sum + (Number(s.duration_hours) || 0), 0);
+      const totalH     = Math.floor(totalHours);
+      const totalMrem  = Math.round((totalHours - totalH) * 60);
+      const totalStr   = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${Math.round(totalHours * 60)}m`;
+
+      blurb.innerHTML = `last ice: ${agoStr}<br>${completed.length} session${completed.length !== 1 ? 's' : ''} today &middot; ${totalStr}`;
+      card.style.borderLeftColor = 'var(--ice)';
     }
 
     async function loadMilestoneStatus() {

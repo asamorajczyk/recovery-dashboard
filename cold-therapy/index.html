@@ -225,6 +225,7 @@
 
     .log-badge.complete { background: rgba(34,197,94,0.1); color: var(--green); }
     .log-badge.stopped  { background: rgba(107,114,128,0.1); color: var(--muted); }
+    .log-badge.active   { background: rgba(56,189,248,0.1); color: var(--ice); }
 
     .log-duration {
       font-family: 'Share Tech Mono', monospace;
@@ -361,6 +362,7 @@
       btn.innerHTML = '&#9646;&#9646;&nbsp; Stop Session';
 
       tickId = setInterval(tick, 1000);
+      apiStartSession();
     }
 
     function transitionStopped() {
@@ -379,7 +381,7 @@
       btn.className = 'start';
       btn.innerHTML = '&#10052;&nbsp; Start Session';
 
-      if (dur >= 10) logSession('complete', dur);
+      if (dur >= 10) apiStopSession(dur);
     }
 
     function handleAction() {
@@ -390,15 +392,19 @@
       }
     }
 
-    async function logSession(event, durationSec) {
+    function apiStartSession() {
+      fetch(`${SCRIPT_URL}?action=startColdTherapy`).catch(() => {});
+    }
+
+    async function apiStopSession(durationSec) {
       try {
-        const res  = await fetch(`${SCRIPT_URL}?action=logColdTherapy&event=${event}&duration_sec=${durationSec}`);
+        const res  = await fetch(`${SCRIPT_URL}?action=stopColdTherapy&duration_sec=${durationSec}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        showToast(`// OK: session logged`, 'success');
+        showToast('// OK: session logged', 'success');
       } catch (e) {
         showToast('// ERR: could not log session — saved locally', 'error');
-        saveLocalFallback(event, durationSec);
+        saveLocalFallback('complete', durationSec);
       }
       await loadTodaySessions();
     }
@@ -431,11 +437,12 @@
     }
 
     function renderSessionLog(sessions) {
-      const list  = document.getElementById('log-list');
-      const label = document.getElementById('session-count-label');
+      const list      = document.getElementById('log-list');
+      const label     = document.getElementById('session-count-label');
+      const completed = sessions.filter(s => (s.status || '').toLowerCase() !== 'in progress');
 
       if (sessions.length > 0) {
-        const totalHours = sessions.reduce((sum, s) => sum + (s.duration_hours || 0), 0);
+        const totalHours = completed.reduce((sum, s) => sum + (s.duration_hours || 0), 0);
         const th = Math.floor(totalHours);
         const tm = Math.round((totalHours - th) * 60);
         const totalStr = th > 0 ? `${th}h ${String(tm).padStart(2,'0')}m` : `${tm}m`;
@@ -445,12 +452,12 @@
       }
 
       const lastIceEl = document.getElementById('last-ice');
-      if (sessions.length > 0 && state !== 'running') {
-        const latestTs = sessions.reduce((best, s) => {
+      if (completed.length > 0 && state !== 'running') {
+        const latestTs = completed.reduce((best, s) => {
           const tsA = s.end_timestamp || s.timestamp;
           const tsB = best.end_timestamp || best.timestamp;
           return parseTs(tsA) > parseTs(tsB) ? s : best;
-        }).end_timestamp || sessions[sessions.length - 1].timestamp;
+        }).end_timestamp || completed[completed.length - 1].timestamp;
         lastIceEl.textContent = `last session: ${fmtAgo(Date.now() - parseTs(latestTs).getTime())}`;
       } else {
         lastIceEl.textContent = '';
@@ -463,18 +470,30 @@
 
       list.innerHTML = '';
       [...sessions].reverse().forEach(s => {
-        const row = document.createElement('div');
-        row.className = 'log-row';
+        const row       = document.createElement('div');
+        row.className   = 'log-row';
 
-        const h = Math.floor(s.duration_hours);
-        const m = Math.round((s.duration_hours - h) * 60);
-        const durStr = h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+        const statusLow  = (s.status || '').toLowerCase();
+        const isActive   = statusLow === 'in progress';
+        const isComplete = !isActive && (s.event || '').toLowerCase() !== 'stopped';
 
-        const isComplete = (s.event || '').toLowerCase() !== 'stopped';
+        let durStr;
+        if (isActive) {
+          const startMs = new Date(s.start_iso || s.timestamp).getTime();
+          durStr = fmtElapsed(Math.floor((Date.now() - startMs) / 1000));
+        } else {
+          const h = Math.floor(s.duration_hours);
+          const m = Math.round((s.duration_hours - h) * 60);
+          durStr = h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+        }
+
+        const badgeClass = isActive ? 'active' : isComplete ? 'complete' : 'stopped';
+        const badgeText  = isActive ? '&#10052; running' : isComplete ? '&#10003; done' : 'stopped';
+
         row.innerHTML = `
           <div class="log-time">${fmtTime(s.timestamp)}</div>
           <div class="log-duration">${durStr}</div>
-          <div class="log-badge ${isComplete ? 'complete' : 'stopped'}">${isComplete ? '&#10003; done' : 'stopped'}</div>
+          <div class="log-badge ${badgeClass}">${badgeText}</div>
         `;
         list.appendChild(row);
       });
