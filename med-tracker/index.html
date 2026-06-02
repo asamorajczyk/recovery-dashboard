@@ -319,19 +319,28 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
 
-    let meds = [];
-    let todayLog = [];
+    let meds         = [];
+    let todayLog     = [];
+    let lastDosesMap = {};  // { medId: 'yyyy-MM-dd HH:mm:ss' } from full log history
     let tickInterval = null;
+
+    // Backend returns timestamps as 'yyyy-MM-dd HH:mm:ss' (space, not T).
+    // Normalize before passing to Date() so all browsers parse it as local time.
+    function parseTs(ts) {
+      return new Date(String(ts).replace(' ', 'T'));
+    }
 
     async function loadData() {
       try {
-        const [medsRes, logRes] = await Promise.all([
+        const [medsRes, logRes, lastDosesRes] = await Promise.all([
           fetch(`${SCRIPT_URL}?action=getMeds`),
-          fetch(`${SCRIPT_URL}?action=getTodayLog`)
+          fetch(`${SCRIPT_URL}?action=getTodayLog`),
+          fetch(`${SCRIPT_URL}?action=getLastDoses`)
         ]);
 
-        meds     = await medsRes.json();
-        todayLog = await logRes.json();
+        meds         = await medsRes.json();
+        todayLog     = await logRes.json();
+        lastDosesMap = await lastDosesRes.json();
 
         render();
       } catch (err) {
@@ -341,13 +350,19 @@
     }
 
     function lastDoseFor(medId) {
-      return todayLog
+      // Check today's log first (has full dose details)
+      const todayEntry = todayLog
         .filter(e => e.med_id === medId)
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0] || null;
+        .sort((a, b) => parseTs(b.timestamp) - parseTs(a.timestamp))[0];
+      if (todayEntry) return todayEntry;
+
+      // Fall back to most recent dose across all history (covers previous days)
+      const ts = lastDosesMap[medId];
+      return ts ? { timestamp: ts, med_id: medId } : null;
     }
 
     function timeAgo(timestamp) {
-      const mins = Math.floor((Date.now() - new Date(timestamp)) / 60000);
+      const mins = Math.floor((Date.now() - parseTs(timestamp)) / 60000);
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       return h > 0 ? `${h}h ${m}m ago` : `${mins}m ago`;
@@ -355,7 +370,7 @@
 
     function msRemaining(lastDose, intervalHours) {
       if (!lastDose) return null;
-      return new Date(lastDose.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
+      return parseTs(lastDose.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
     }
 
     function formatCountdown(ms) {

@@ -36,6 +36,7 @@ function doGet(e) {
     else if (action === 'logPtSets')      result = logPtSets(e.parameter);
     else if (action === 'getTodayPt')     result = getTodayPt();
     else if (action === 'getLastDose')    result = getLastDose(e.parameter);
+    else if (action === 'getLastDoses')   result = getLastDoses();
     else if (action === 'logPain')        result = logPain(e.parameter);
     else if (action === 'getTodayPain')      result = getTodayPain();
     else if (action === 'getMilestones')     result = getMilestones();
@@ -315,6 +316,29 @@ function getLastDose(params) {
   }
 
   return { timestamp: bestTimestamp };
+}
+
+function getLastDoses() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
+  const data  = sheet.getDataRange().getValues();
+  const tz    = Session.getScriptTimeZone();
+
+  const bestMs = {};
+  const best   = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue;
+    const medId    = String(row[2]);
+    const combined = combineDateTime_(row[0], row[1], tz);
+    const ms       = new Date(combined).getTime();
+    if (!bestMs[medId] || ms > bestMs[medId]) {
+      bestMs[medId] = ms;
+      best[medId]   = combined;
+    }
+  }
+
+  return best;
 }
 
 function logPain(params) {
