@@ -175,6 +175,49 @@
 
     .timer-display.running { color: var(--accent); }
 
+    .degree-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 12px;
+    }
+
+    .degree-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .degree-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--ink);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 20px;
+      text-align: center;
+      width: 80px;
+      padding: 6px 8px;
+      outline: none;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .degree-input::-webkit-inner-spin-button,
+    .degree-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .degree-input:focus { border-color: var(--accent); }
+
+    .session-deg {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      color: var(--yellow);
+    }
+
     #session-btn {
       width: 100%;
       background: var(--accent);
@@ -284,7 +327,7 @@
     <!-- Daily progress -->
     <div class="progress-card">
       <div class="progress-label">// Today's total</div>
-      <div class="progress-total" id="progress-total">0h 00m / 4h 00m</div>
+      <div class="progress-total" id="progress-total">0m / —</div>
       <div class="progress-bar-bg">
         <div class="progress-bar" id="progress-bar"></div>
       </div>
@@ -294,6 +337,10 @@
     <div class="timer-card">
       <div class="timer-label" id="timer-label">// Current session</div>
       <div class="timer-display" id="timer-display">00:00:00</div>
+      <div class="degree-row">
+        <label class="degree-label" for="degree-input">// Degrees reached</label>
+        <input type="number" id="degree-input" class="degree-input" placeholder="—" min="0" max="180">
+      </div>
       <button id="session-btn" onclick="toggleSession()">&#9654;&nbsp; Start Session</button>
       <div class="toast" id="toast"></div>
     </div>
@@ -304,7 +351,7 @@
 
     <div class="footer">
       <span id="footer-time">—</span>
-      <span>goal: 4h / day</span>
+      <span id="footer-goal">goal: —</span>
     </div>
 
   </div>
@@ -312,7 +359,19 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
     const TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
-    const GOAL_MINUTES = 240;
+
+    function getSchedule() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date('2026-06-02T00:00:00');
+      const week = Math.floor(Math.floor((today - start) / 86400000) / 7) + 1;
+      if (week <= 2) return { goal: 45,  label: '3 × 15 min' };
+      if (week === 3) return { goal: 50, label: '2 × 25 min' };
+      return                 { goal: 60, label: '2 × 30 min' };
+    }
+
+    const schedule = getSchedule();
+    const GOAL_MINUTES = schedule.goal;
 
     function checkGoalNotification(totalMinutes) {
       if (totalMinutes < GOAL_MINUTES) return;
@@ -323,7 +382,7 @@
       fetch(`https://ntfy.sh/${TOPIC}`, {
         method: 'POST',
         headers: { 'Title': 'Jessie', 'Priority': 'high', 'Content-Type': 'text/plain' },
-        body: 'ROM goal reached! 4 hours completed today.'
+        body: `ROM goal reached! ${schedule.label} completed today.`
       });
     }
 
@@ -346,6 +405,7 @@
     function fmtMinutes(mins) {
       const h = Math.floor(mins / 60);
       const m = Math.round(mins % 60);
+      if (h === 0) return `${m}m`;
       return `${h}h ${String(m).padStart(2, '0')}m`;
     }
 
@@ -361,7 +421,7 @@
       const done  = total >= GOAL_MINUTES;
 
       document.getElementById('progress-total').textContent =
-        `${fmtMinutes(total)} / 4h 00m`;
+        `${fmtMinutes(total)} / ${fmtMinutes(GOAL_MINUTES)}`;
       document.getElementById('progress-total').className =
         'progress-total' + (done ? ' done' : '');
 
@@ -404,6 +464,8 @@
       const endTime        = Date.now();
       const durationMs     = endTime - sessionStart;
       const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
+      const degreeVal      = document.getElementById('degree-input').value.trim();
+      const degrees        = degreeVal !== '' ? Number(degreeVal) : null;
 
       clearInterval(timerInterval);
       timerInterval = null;
@@ -417,10 +479,11 @@
       const endIso   = new Date(endTime).toLocaleString('en-US');
 
       try {
-        const url = `${SCRIPT_URL}?action=logRomSession` +
+        let url = `${SCRIPT_URL}?action=logRomSession` +
           `&startTime=${encodeURIComponent(startIso)}` +
           `&endTime=${encodeURIComponent(endIso)}` +
           `&durationMinutes=${durationMinutes}`;
+        if (degrees !== null) url += `&degrees=${degrees}`;
 
         const res  = await fetch(url);
         const data = await res.json();
@@ -435,11 +498,13 @@
         document.getElementById('timer-display').textContent = '00:00:00';
         document.getElementById('timer-display').className = 'timer-display';
         document.getElementById('timer-label').textContent = '// Current session';
+        document.getElementById('degree-input').value = '';
 
         btn.innerHTML = '&#9654;&nbsp; Start Session';
         btn.disabled = false;
 
-        showToast(`// OK: ${fmtMinutes(durationMinutes)} session logged`, 'success');
+        const degStr = degrees !== null ? ` @ ${degrees}°` : '';
+        showToast(`// OK: ${fmtMinutes(durationMinutes)}${degStr} logged`, 'success');
         updateProgressUI(0);
         loadSessions();
 
@@ -477,8 +542,12 @@
           data.sessions.forEach(s => {
             const row = document.createElement('div');
             row.className = 'session-row';
+            const degHtml = s.degrees != null
+              ? `<div class="session-deg">${s.degrees}°</div>`
+              : '';
             row.innerHTML = `
               <div class="session-time">${fmtTimeOfDay(s.startTime)} — ${fmtTimeOfDay(s.endTime)}</div>
+              ${degHtml}
               <div class="session-dur">${fmtMinutes(s.durationMinutes)}</div>
             `;
             list.appendChild(row);
@@ -503,6 +572,8 @@
       document.getElementById('timer-label').textContent = '// Session in progress';
       startTimerTick();
     }
+
+    document.getElementById('footer-goal').textContent = `goal: ${schedule.label} / day`;
 
     loadSessions();
     setInterval(loadSessions, 300_000);

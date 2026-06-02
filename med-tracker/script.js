@@ -195,13 +195,15 @@ function logRomSession(params) {
 
   if (!startTime || !endTime || !durationMinutes) return { error: 'startTime, endTime, and durationMinutes required' };
 
+  const degrees = params.degrees !== undefined && params.degrees !== '' ? Number(params.degrees) : '';
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ROM Log');
   const tz    = Session.getScriptTimeZone();
   const date  = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
 
-  sheet.appendRow([date, startTime, endTime, durationMinutes]);
+  sheet.appendRow([date, startTime, endTime, durationMinutes, degrees]);
 
-  return { success: true, date, durationMinutes };
+  return { success: true, date, durationMinutes, degrees: degrees !== '' ? degrees : null };
 }
 
 function getTodayRom() {
@@ -223,7 +225,8 @@ function getTodayRom() {
         date:            rowDate,
         startTime:       String(row[1]),
         endTime:         String(row[2]),
-        durationMinutes: Number(row[3]) || 0
+        durationMinutes: Number(row[3]) || 0,
+        degrees:         row[4] !== '' && row[4] !== undefined ? Number(row[4]) : null
       });
     }
   }
