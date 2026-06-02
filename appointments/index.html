@@ -219,14 +219,19 @@
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
 
+    function parseDate(dateStr) {
+      const [yr, mo, dy] = (dateStr || '').split('-').map(Number);
+      return new Date(yr, mo - 1, dy);
+    }
+
     function daysUntil(dateStr) {
-      const appt  = new Date(dateStr + 'T00:00:00');
+      const appt  = parseDate(dateStr);
       const today = new Date(); today.setHours(0,0,0,0);
       return Math.round((appt - today) / 86400000);
     }
 
     function formatDate(dateStr) {
-      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+      return parseDate(dateStr).toLocaleDateString('en-US', {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
       });
     }

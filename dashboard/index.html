@@ -429,14 +429,23 @@
           return;
         }
 
-        const next     = appts[0];
-        const apptDate = new Date(next.date + 'T00:00:00');
-        const today    = new Date(); today.setHours(0,0,0,0);
-        const days     = Math.round((apptDate - today) / 86400000);
-        const daysStr  = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
-        const dateStr  = apptDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const next = appts[0];
+        // Parse yyyy-MM-dd into parts to avoid string-based Date parsing issues
+        const [yr, mo, dy] = (next.date || '').split('-').map(Number);
+        const apptDate = new Date(yr, mo - 1, dy);
+        const today    = new Date(); today.setHours(0, 0, 0, 0);
 
-        blurb.innerHTML = `<span style="color:var(--ink)">${next.title}</span><br>${dateStr} &middot; ${next.time} &middot; ${daysStr}`;
+        if (isNaN(apptDate.getTime())) {
+          blurb.textContent = next.title || 'upcoming appointment';
+          return;
+        }
+
+        const days    = Math.round((apptDate - today) / 86400000);
+        const daysStr = days === 0 ? 'today' : days === 1 ? 'tomorrow' : days < 0 ? `${Math.abs(days)}d ago` : `in ${days} days`;
+        const dateStr = apptDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = next.time && !next.time.includes('1899') && !next.time.includes('1900') ? ` &middot; ${next.time}` : '';
+
+        blurb.innerHTML = `<span style="color:var(--ink)">${next.title}</span><br>${dateStr}${timeStr} &middot; ${daysStr}`;
         card.style.borderLeftColor = days <= 1 ? 'var(--accent)' : days <= 7 ? 'var(--yellow)' : 'var(--border-bright)';
       } catch (err) {
         document.getElementById('appt-blurb').textContent = '// could not load';

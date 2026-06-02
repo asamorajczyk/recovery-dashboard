@@ -255,6 +255,29 @@
       justify-content: center;
     }
 
+    .exercise-instructions {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-top: 6px;
+      white-space: pre-line;
+      display: none;
+    }
+
+    .exercise-card.show-instructions .exercise-instructions { display: block; }
+
+    .instructions-toggle {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 9px;
+      color: var(--border-bright);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
     /* Per-exercise set progress bar */
     .set-bar-bg {
       height: 4px;
@@ -406,6 +429,9 @@
             <div class="exercise-info">
               <div class="exercise-name">${ex.name}</div>
               <div class="exercise-reps">${repLabel} &middot; ${ex.perform_per_day}x/day</div>
+              ${ex.instructions ? `
+              <div class="instructions-toggle" onclick="toggleInstructions(this)">// how to &#9660;</div>
+              <div class="exercise-instructions">${ex.instructions}</div>` : ''}
             </div>
             <div class="exercise-right">
               <div class="set-count">${done}/${ex.daily_sets}</div>
@@ -489,6 +515,12 @@
     function closeLightbox() {
       document.getElementById('lightbox').className = 'lightbox';
       document.getElementById('lightbox-img').src = '';
+    }
+
+    function toggleInstructions(btn) {
+      const card = btn.closest('.exercise-card');
+      const open = card.classList.toggle('show-instructions');
+      btn.innerHTML = open ? '// how to &#9650;' : '// how to &#9660;';
     }
 
     async function loadData() {

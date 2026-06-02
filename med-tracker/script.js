@@ -221,9 +221,20 @@ function getAppointments() {
     if (!row[0]) continue;
     const dateStr = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
     if (dateStr >= todayStr) {
+      // row[1] is a time cell — Sheets returns these as Date objects anchored to Dec 30 1899
+      let timeStr = '';
+      if (row[1] instanceof Date) {
+        timeStr = Utilities.formatDate(row[1], tz, 'h:mm a');
+        // guard: if Sheets gave us a date disguised as a time, fall back to empty
+        if (new Date(row[1]).getFullYear() !== 1899 && new Date(row[1]).getFullYear() !== 1900) {
+          timeStr = Utilities.formatDate(row[1], tz, 'h:mm a');
+        }
+      } else {
+        timeStr = String(row[1] || '');
+      }
       appts.push({
         date:             dateStr,
-        time:             row[1] instanceof Date ? Utilities.formatDate(row[1], tz, 'h:mm a') : String(row[1] || ''),
+        time:             timeStr,
         title:            String(row[2] || ''),
         location_name:    String(row[3] || ''),
         location_address: String(row[4] || ''),
@@ -257,6 +268,7 @@ function getPtExercises() {
         perform_per_day:  performPerDay,
         daily_sets:       setsPerSession * performPerDay,
         image_filename:   String(row[6] || ''),
+        instructions:     String(row[8] || ''),
       });
     }
   }
