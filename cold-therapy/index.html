@@ -53,7 +53,6 @@
       margin: 0 auto;
     }
 
-    /* Header */
     .header {
       display: flex;
       align-items: flex-end;
@@ -92,7 +91,6 @@
     }
     .back-link:active { color: var(--ink); }
 
-    /* Timer block */
     .timer-block {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -107,11 +105,6 @@
     .timer-block.running {
       box-shadow: 0 0 24px rgba(56,189,248,0.12);
       animation: ice-pulse 3s ease-in-out infinite;
-    }
-
-    .timer-block.done {
-      border-top-color: var(--green);
-      box-shadow: 0 0 20px rgba(34,197,94,0.1);
     }
 
     @keyframes ice-pulse {
@@ -139,8 +132,7 @@
       transition: color 0.3s;
     }
 
-    .timer-display.done  { color: var(--green); }
-    .timer-display.idle  { opacity: 0.6; }
+    .timer-display.idle { opacity: 0.6; }
 
     .timer-sub {
       font-family: 'Share Tech Mono', monospace;
@@ -159,7 +151,6 @@
       min-height: 14px;
     }
 
-    /* Buttons */
     #action-btn {
       display: block;
       width: 100%;
@@ -181,28 +172,7 @@
 
     #action-btn.start { background: var(--ice); color: #0a0a0a; }
     #action-btn.stop  { background: #1e2023; color: var(--accent); border: 1px solid var(--accent); }
-    #action-btn.again { background: var(--green-dim); color: var(--green); border: 1px solid #166534; }
 
-    /* Progress bar */
-    .progress-bg {
-      height: 3px;
-      background: var(--surface2);
-      border-radius: 2px;
-      overflow: hidden;
-      margin-top: 16px;
-    }
-
-    .progress-bar {
-      height: 3px;
-      background: var(--ice);
-      border-radius: 2px;
-      width: 100%;
-      transition: width 1s linear, background 0.3s;
-    }
-
-    .progress-bar.done { background: var(--green); width: 0%; }
-
-    /* Toast */
     .toast {
       display: none;
       padding: 10px 14px;
@@ -216,7 +186,6 @@
     .toast.success { display: block; background: rgba(34,197,94,0.08); color: var(--green); border-color: #166534; }
     .toast.error   { display: block; background: rgba(224,92,26,0.08); color: var(--accent); border-color: #7a2f08; }
 
-    /* Session log */
     .section-label {
       font-family: 'Share Tech Mono', monospace;
       font-size: 9px;
@@ -271,7 +240,6 @@
       color: var(--border-bright);
     }
 
-    /* Session count */
     .session-count {
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
@@ -298,27 +266,22 @@
     <div class="header">
       <div>
         <h1>COLD <span>THERAPY</span></h1>
-        <p>20-minute icing session</p>
+        <p>On/off session tracker</p>
       </div>
       <a class="back-link" href="../dashboard/index.html">&#9664; back</a>
     </div>
 
-    <!-- Timer card -->
     <div class="timer-block" id="timer-block">
       <div class="timer-status-label" id="status-label">// ready</div>
-      <div class="timer-display idle" id="timer-display">20:00</div>
+      <div class="timer-display idle" id="timer-display">00:00</div>
       <div class="timer-sub" id="timer-sub">tap start to begin</div>
       <div class="last-ice" id="last-ice"></div>
-      <div class="progress-bg">
-        <div class="progress-bar" id="progress-bar"></div>
-      </div>
     </div>
 
     <button id="action-btn" class="start" onclick="handleAction()">&#10052;&nbsp; Start Session</button>
 
     <div class="toast" id="toast"></div>
 
-    <!-- Today's sessions -->
     <div class="section-label" id="session-count-label">// today's sessions</div>
     <div class="log-list" id="log-list">
       <div class="no-entries">loading...</div>
@@ -330,19 +293,19 @@
 
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
-    const SESSION_SECONDS = 20 * 60; // change this to adjust session length
 
-    let state      = 'idle';   // idle | running | done
-    let remaining  = SESSION_SECONDS;
-    let elapsed    = 0;
-    let tickId     = null;
-    let sessionId  = null;     // timestamp string set when session starts
+    let state    = 'idle';   // idle | running
+    let elapsed  = 0;        // seconds elapsed this session
+    let tickId   = null;
 
-    // ── Helpers ──────────────────────────────────────────────────
-    function fmtSeconds(s) {
-      const m = Math.floor(s / 60);
+    function fmtElapsed(s) {
+      const h   = Math.floor(s / 3600);
+      const m   = Math.floor((s % 3600) / 60);
       const sec = s % 60;
-      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+      if (h > 0) {
+        return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      }
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     }
 
     function fmtTime(ts) {
@@ -360,7 +323,7 @@
 
     function setDisplay(seconds, cls) {
       const el = document.getElementById('timer-display');
-      el.textContent = fmtSeconds(seconds);
+      el.textContent = fmtElapsed(seconds);
       el.className = 'timer-display ' + (cls || '');
     }
 
@@ -371,82 +334,29 @@
       if (type === 'success') setTimeout(() => { t.className = 'toast'; }, 5000);
     }
 
-    // ── Audio alert ───────────────────────────────────────────────
-    function playDoneBeeps() {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [0, 0.35, 0.7].forEach(delay => {
-          const osc  = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = 'sine';
-          osc.frequency.value = 880;
-          gain.gain.setValueAtTime(0.4, ctx.currentTime + delay);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.25);
-          osc.start(ctx.currentTime + delay);
-          osc.stop(ctx.currentTime + delay + 0.25);
-        });
-      } catch (e) { /* audio not available */ }
-    }
-
-    // ── Timer tick ────────────────────────────────────────────────
     function tick() {
-      remaining--;
       elapsed++;
-
-      const pct = ((SESSION_SECONDS - remaining) / SESSION_SECONDS) * 100;
-      document.getElementById('progress-bar').style.width = (100 - pct) + '%';
-      setDisplay(remaining, '');
-
-      if (remaining <= 0) {
-        clearInterval(tickId);
-        tickId = null;
-        transitionDone();
-      }
+      setDisplay(elapsed, '');
     }
 
-    // ── State transitions ─────────────────────────────────────────
     function transitionRunning() {
-      state     = 'running';
-      remaining = SESSION_SECONDS;
-      elapsed   = 0;
-      sessionId = new Date().toISOString();
+      state   = 'running';
+      elapsed = 0;
 
       localStorage.setItem('cold_therapy_session_start', Date.now().toString());
-      document.getElementById('timer-block').className  = 'timer-block running';
-      document.getElementById('status-label').textContent = '// session active';
-      document.getElementById('timer-sub').textContent  = 'keep ice in place';
-      document.getElementById('last-ice').textContent   = '';
-      document.getElementById('progress-bar').className = 'progress-bar';
-      document.getElementById('progress-bar').style.width = '100%';
 
-      setDisplay(SESSION_SECONDS, '');
+      document.getElementById('timer-block').className    = 'timer-block running';
+      document.getElementById('status-label').textContent = '// session active';
+      document.getElementById('timer-sub').textContent    = 'machine is running';
+      document.getElementById('last-ice').textContent     = '';
+
+      setDisplay(0, '');
 
       const btn = document.getElementById('action-btn');
-      btn.className   = 'stop';
-      btn.innerHTML   = '&#9646;&#9646;&nbsp; Stop Session';
+      btn.className = 'stop';
+      btn.innerHTML = '&#9646;&#9646;&nbsp; Stop Session';
 
       tickId = setInterval(tick, 1000);
-    }
-
-    function transitionDone() {
-      state = 'done';
-
-      document.getElementById('timer-block').className  = 'timer-block done';
-      document.getElementById('status-label').textContent = '// session complete!';
-      document.getElementById('timer-sub').textContent  = 'great work — remove ice';
-      document.getElementById('progress-bar').className = 'progress-bar done';
-
-      localStorage.removeItem('cold_therapy_session_start');
-      setDisplay(0, 'done');
-      playDoneBeeps();
-
-      const btn = document.getElementById('action-btn');
-      btn.className = 'again';
-      btn.innerHTML = '&#10052;&nbsp; Start Another';
-
-      logSession('complete', SESSION_SECONDS);
     }
 
     function transitionStopped() {
@@ -455,50 +365,33 @@
       const dur = elapsed;
       state = 'idle';
 
-      document.getElementById('timer-block').className  = 'timer-block';
+      document.getElementById('timer-block').className    = 'timer-block';
       document.getElementById('status-label').textContent = '// ready';
-      document.getElementById('timer-sub').textContent  = 'tap start to begin';
-      document.getElementById('progress-bar').className = 'progress-bar';
-      document.getElementById('progress-bar').style.width = '100%';
+      document.getElementById('timer-sub').textContent    = 'tap start to begin';
 
-      setDisplay(SESSION_SECONDS, 'idle');
+      setDisplay(0, 'idle');
 
       const btn = document.getElementById('action-btn');
       btn.className = 'start';
       btn.innerHTML = '&#10052;&nbsp; Start Session';
 
-      if (dur >= 10) logSession('stopped', dur);
-    }
-
-    function transitionIdle() {
-      state = 'idle';
-      document.getElementById('timer-block').className  = 'timer-block';
-      document.getElementById('status-label').textContent = '// ready';
-      document.getElementById('timer-sub').textContent  = 'tap start to begin';
-      document.getElementById('progress-bar').className = 'progress-bar';
-      document.getElementById('progress-bar').style.width = '100%';
-      setDisplay(SESSION_SECONDS, 'idle');
-
-      const btn = document.getElementById('action-btn');
-      btn.className = 'start';
-      btn.innerHTML = '&#10052;&nbsp; Start Session';
+      if (dur >= 10) logSession('complete', dur);
     }
 
     function handleAction() {
-      if (state === 'idle' || state === 'done') {
+      if (state === 'idle') {
         transitionRunning();
       } else if (state === 'running') {
         transitionStopped();
       }
     }
 
-    // ── Google Sheets logging ─────────────────────────────────────
     async function logSession(event, durationSec) {
       try {
         const res  = await fetch(`${SCRIPT_URL}?action=logColdTherapy&event=${event}&duration_sec=${durationSec}`);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        showToast(`// OK: session logged (${event})`, 'success');
+        showToast(`// OK: session logged`, 'success');
       } catch (e) {
         showToast('// ERR: could not log session — saved locally', 'error');
         saveLocalFallback(event, durationSec);
@@ -513,26 +406,21 @@
       localStorage.setItem(key, JSON.stringify(list));
     }
 
-    // ── Load today's sessions ────────────────────────────────────
     async function loadTodaySessions() {
       try {
         const res  = await fetch(`${SCRIPT_URL}?action=getColdTherapyLog`);
         const data = await res.json();
-
         renderSessionLog(data.sessions || []);
         document.getElementById('footer').textContent =
           `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()} · logged to google sheet`;
-
       } catch (e) {
-        // fall back to local storage display
         const local = JSON.parse(localStorage.getItem('cold_therapy_fallback') || '[]');
         const today = new Date().toDateString();
-        const todayLocal = local.filter(s => new Date(s.timestamp).toDateString() === today);
-        renderSessionLog(todayLocal.map(s => ({
-          timestamp: s.timestamp,
-          event: s.event,
-          duration_hours: s.duration_hours
-        })));
+        renderSessionLog(
+          local
+            .filter(s => new Date(s.timestamp).toDateString() === today)
+            .map(s => ({ timestamp: s.timestamp, event: s.event, duration_hours: s.duration_hours }))
+        );
       }
     }
 
@@ -540,23 +428,22 @@
       const list  = document.getElementById('log-list');
       const label = document.getElementById('session-count-label');
 
-      const completed = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-      const total     = sessions.length;
-
-      if (total > 0) {
-        label.textContent = `// today's sessions — ${completed} complete, ${total} total`;
+      if (sessions.length > 0) {
+        const totalHours = sessions.reduce((sum, s) => sum + (s.duration_hours || 0), 0);
+        const th = Math.floor(totalHours);
+        const tm = Math.round((totalHours - th) * 60);
+        const totalStr = th > 0 ? `${th}h ${String(tm).padStart(2,'0')}m` : `${tm}m`;
+        label.textContent = `// today's sessions — ${sessions.length} logged · ${totalStr} total`;
       } else {
         label.textContent = '// today\'s sessions';
       }
 
-      // Update "last ice" line on the timer card
       const lastIceEl = document.getElementById('last-ice');
-      if (sessions.length > 0) {
+      if (sessions.length > 0 && state !== 'running') {
         const latestTs = sessions.reduce((best, s) =>
           new Date(s.timestamp) > new Date(best.timestamp) ? s : best
         ).timestamp;
-        const ago = fmtAgo(Date.now() - new Date(latestTs).getTime());
-        lastIceEl.textContent = `last ice: ${ago}`;
+        lastIceEl.textContent = `last session: ${fmtAgo(Date.now() - new Date(latestTs).getTime())}`;
       } else {
         lastIceEl.textContent = '';
       }
@@ -568,7 +455,7 @@
 
       list.innerHTML = '';
       [...sessions].reverse().forEach(s => {
-        const row  = document.createElement('div');
+        const row = document.createElement('div');
         row.className = 'log-row';
 
         const h = Math.floor(s.duration_hours);
@@ -576,13 +463,10 @@
         const durStr = h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
 
         const isComplete = (s.event || '').toLowerCase() !== 'stopped';
-        const badgeClass = isComplete ? 'complete' : 'stopped';
-        const badgeLabel = isComplete ? '&#10003; done' : 'stopped';
-
         row.innerHTML = `
           <div class="log-time">${fmtTime(s.timestamp)}</div>
           <div class="log-duration">${durStr}</div>
-          <div class="log-badge ${badgeClass}">${badgeLabel}</div>
+          <div class="log-badge ${isComplete ? 'complete' : 'stopped'}">${isComplete ? '&#10003; done' : 'stopped'}</div>
         `;
         list.appendChild(row);
       });

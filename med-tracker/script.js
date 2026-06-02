@@ -224,9 +224,8 @@ function getAppointments() {
       // row[1] is a time cell — Sheets returns these as Date objects anchored to Dec 30 1899
       let timeStr = '';
       if (row[1] instanceof Date) {
-        timeStr = Utilities.formatDate(row[1], tz, 'h:mm a');
-        // guard: if Sheets gave us a date disguised as a time, fall back to empty
-        if (new Date(row[1]).getFullYear() !== 1899 && new Date(row[1]).getFullYear() !== 1900) {
+        const yr = row[1].getFullYear();
+        if (yr === 1899 || yr === 1900) {
           timeStr = Utilities.formatDate(row[1], tz, 'h:mm a');
         }
       } else {
@@ -236,9 +235,10 @@ function getAppointments() {
         date:             dateStr,
         time:             timeStr,
         title:            String(row[2] || ''),
-        location_name:    String(row[3] || ''),
-        location_address: String(row[4] || ''),
-        notes:            String(row[5] || '')
+        with:             String(row[3] || ''),
+        location_name:    String(row[4] || ''),
+        location_address: String(row[5] || ''),
+        notes:            String(row[6] || '')
       });
     }
   }

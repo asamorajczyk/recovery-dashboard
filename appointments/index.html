@@ -258,6 +258,8 @@
           const card = document.createElement('div');
           card.className = `appt-card ${urgency}`;
 
+          const hasWith = appt.with && appt.with.trim() !== '';
+
           card.innerHTML = `
             <div class="appt-title-row">
               <div class="appt-title">${appt.title}</div>
@@ -265,6 +267,11 @@
             </div>
             <div class="appt-datetime">${formatDate(appt.date)}${appt.time ? ' &middot; ' + appt.time : ''}</div>
             <div class="sep-mini"></div>
+            ${hasWith ? `
+              <div class="detail-row">
+                <div class="detail-label">With</div>
+                <div class="detail-value">${appt.with}</div>
+              </div>` : ''}
             ${appt.location_name ? `
               <div class="detail-row">
                 <div class="detail-label">Location</div>
