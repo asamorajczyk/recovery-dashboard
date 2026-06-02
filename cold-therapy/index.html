@@ -308,8 +308,12 @@
       return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     }
 
+    function parseTs(ts) {
+      return new Date(String(ts).replace(' ', 'T'));
+    }
+
     function fmtTime(ts) {
-      return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return parseTs(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
 
     function fmtAgo(ms) {
@@ -402,7 +406,9 @@
     function saveLocalFallback(event, durationSec) {
       const key  = 'cold_therapy_fallback';
       const list = JSON.parse(localStorage.getItem(key) || '[]');
-      list.push({ timestamp: new Date().toISOString(), event, duration_hours: durationSec / 3600 });
+      const endTs   = new Date().toISOString();
+      const startTs = new Date(Date.now() - durationSec * 1000).toISOString();
+      list.push({ timestamp: startTs, end_timestamp: endTs, event, duration_hours: durationSec / 3600 });
       localStorage.setItem(key, JSON.stringify(list));
     }
 
@@ -440,10 +446,12 @@
 
       const lastIceEl = document.getElementById('last-ice');
       if (sessions.length > 0 && state !== 'running') {
-        const latestTs = sessions.reduce((best, s) =>
-          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
-        ).timestamp;
-        lastIceEl.textContent = `last session: ${fmtAgo(Date.now() - new Date(latestTs).getTime())}`;
+        const latestTs = sessions.reduce((best, s) => {
+          const tsA = s.end_timestamp || s.timestamp;
+          const tsB = best.end_timestamp || best.timestamp;
+          return parseTs(tsA) > parseTs(tsB) ? s : best;
+        }).end_timestamp || sessions[sessions.length - 1].timestamp;
+        lastIceEl.textContent = `last session: ${fmtAgo(Date.now() - parseTs(latestTs).getTime())}`;
       } else {
         lastIceEl.textContent = '';
       }

@@ -374,22 +374,25 @@ function getTodayPain() {
 }
 
 function logColdTherapy(params) {
-  const event       = params.event;
   const durationSec = Number(params.duration_sec);
+  if (!durationSec) return { error: 'duration_sec required' };
 
-  if (!event || !durationSec) return { error: 'event and duration_sec required' };
+  const sheet  = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
+  const tz     = Session.getScriptTimeZone();
+  const endNow = new Date();
+  const startNow = new Date(endNow.getTime() - durationSec * 1000);
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
-  const tz    = Session.getScriptTimeZone();
-  const now   = new Date();
-  const dateVal      = Utilities.formatDate(now, tz, 'M/d/yyyy');
-  const timeVal      = Utilities.formatDate(now, tz, 'h:mm a');
-  const timestamp    = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
+  const startDateVal  = Utilities.formatDate(startNow, tz, 'M/d/yyyy');
+  const startTimeVal  = Utilities.formatDate(startNow, tz, 'h:mm a');
+  const endDateVal    = Utilities.formatDate(endNow,   tz, 'M/d/yyyy');
+  const endTimeVal    = Utilities.formatDate(endNow,   tz, 'h:mm a');
   const durationHours = Math.round((durationSec / 3600) * 10000) / 10000;
 
-  sheet.appendRow([dateVal, timeVal, event, durationHours]);
+  // Columns: Start Date | Start Time | End Date | End Time | Duration (hours)
+  sheet.appendRow([startDateVal, startTimeVal, endDateVal, endTimeVal, durationHours]);
 
-  return { success: true, timestamp, event, duration_hours: durationHours };
+  const timestamp = Utilities.formatDate(endNow, tz, 'yyyy-MM-dd HH:mm:ss');
+  return { success: true, timestamp, duration_hours: durationHours };
 }
 
 function getColdTherapyLog() {
@@ -405,15 +408,35 @@ function getColdTherapyLog() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
+    // Filter by start date (col A)
     const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
-    if (rowDate === todayStr) {
-      const event = String(row[2]).trim().toLowerCase();
-      sessions.push({
-        timestamp:      combineDateTime_(row[0], row[1], tz),
-        event:          event === 'stopped' ? 'stopped' : 'complete',
-        duration_hours: Number(row[3]) || 0
-      });
+    if (rowDate !== todayStr) continue;
+
+    const startTs = combineDateTime_(row[0], row[1], tz);
+
+    // End timestamp: use col C+D if present, else compute from start + duration
+    let endTs;
+    if (row[2] && row[3]) {
+      endTs = combineDateTime_(row[2], row[3], tz);
+    } else {
+      const durMs  = (Number(row[4]) || 0) * 3600000;
+      const startD = (row[0] instanceof Date) ? row[0] : new Date(String(row[0]));
+      const startT = (row[1] instanceof Date) ? row[1] : new Date('2000-01-01 ' + String(row[1]));
+      const startMs = new Date(
+        startD.getFullYear(), startD.getMonth(), startD.getDate(),
+        isNaN(startT) ? 0 : startT.getHours(),
+        isNaN(startT) ? 0 : startT.getMinutes(),
+        isNaN(startT) ? 0 : startT.getSeconds()
+      ).getTime();
+      endTs = Utilities.formatDate(new Date(startMs + durMs), tz, 'yyyy-MM-dd HH:mm:ss');
     }
+
+    sessions.push({
+      timestamp:     startTs,
+      end_timestamp: endTs,
+      event:         'complete',
+      duration_hours: Number(row[4]) || 0
+    });
   }
 
   return { sessions };

@@ -656,10 +656,14 @@
           return;
         }
 
-        const latest = sessions.reduce((best, s) =>
-          new Date(s.timestamp) > new Date(best.timestamp) ? s : best
-        );
-        const msAgo    = Date.now() - new Date(latest.timestamp).getTime();
+        function parseTs(ts) { return new Date(String(ts).replace(' ', 'T')); }
+        const latest = sessions.reduce((best, s) => {
+          const tsA = s.end_timestamp || s.timestamp;
+          const tsB = best.end_timestamp || best.timestamp;
+          return parseTs(tsA) > parseTs(tsB) ? s : best;
+        });
+        const latestTs = latest.end_timestamp || latest.timestamp;
+        const msAgo    = Date.now() - parseTs(latestTs).getTime();
         const totalMin = Math.floor(msAgo / 60000);
         let agoStr;
         if (totalMin < 2)  agoStr = 'just now';

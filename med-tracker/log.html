@@ -141,8 +141,12 @@
       margin-bottom: 28px;
     }
 
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
     button {
-      width: 100%;
       background: var(--accent);
       color: #fff;
       border: none;
@@ -152,10 +156,28 @@
       font-weight: 700;
       letter-spacing: 4px;
       text-transform: uppercase;
-      padding: 18px;
+      padding: 18px 12px;
       cursor: pointer;
       transition: background 0.15s, transform 0.08s;
       min-height: 64px;
+    }
+
+    #log-btn {
+      flex: 3;
+    }
+
+    #custom-btn {
+      flex: 2;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    #custom-btn:not(:disabled):active {
+      background: var(--border);
+      color: var(--ink);
     }
 
     button:active:not(:disabled) { transform: scale(0.99); }
@@ -163,6 +185,48 @@
     button:disabled {
       opacity: 0.35;
       cursor: not-allowed;
+    }
+
+    /* Custom time panel */
+    .custom-panel {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      border-radius: 2px;
+    }
+
+    .custom-panel .med-label {
+      margin-bottom: 10px;
+    }
+
+    input[type="datetime-local"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      border-radius: 2px;
+      color: var(--ink);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    input[type="datetime-local"]:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.6);
+      cursor: pointer;
+    }
+
+    #custom-confirm-btn {
+      width: 100%;
+      min-height: 52px;
+      font-size: 13px;
     }
 
     .toast {
@@ -182,6 +246,19 @@
     .cancel-link {
       display: none;
       margin-top: 12px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: center;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .custom-cancel {
+      display: block;
+      margin-top: 10px;
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
       letter-spacing: 0.12em;
@@ -218,7 +295,18 @@
     <div class="med-name-display" id="med-name">Loading...</div>
     <div class="dose-display" id="dose"></div>
 
-    <button id="log-btn" disabled onclick="logDose()">&#9654;&nbsp; Log Dose Now</button>
+    <div class="btn-row">
+      <button id="log-btn" disabled onclick="logDose()">&#9654;&nbsp; Log Now</button>
+      <button id="custom-btn" disabled onclick="showCustomTime()">&#9202;&nbsp; Custom Time</button>
+    </div>
+
+    <div class="custom-panel" id="custom-panel">
+      <div class="med-label">// Log at custom timestamp</div>
+      <input type="datetime-local" id="custom-time-input" />
+      <button id="custom-confirm-btn" onclick="logDoseCustom()">&#9654;&nbsp; Confirm Log</button>
+      <div class="custom-cancel" onclick="hideCustomTime()">&#8592; cancel</div>
+    </div>
+
     <div class="toast" id="toast"></div>
     <div class="cancel-link" id="cancel-link" onclick="cancelLog()">&#8592; cancel</div>
 
@@ -233,14 +321,20 @@
 
     const medId = new URLSearchParams(window.location.search).get('med');
     let currentMed  = null;
-    let earlyWarn   = false;   // true if >30 min remains on last dose
-    let warnMs      = 0;       // ms remaining when warning was set
-    let confirmed   = false;   // user tapped "log anyway"
+    let earlyWarn   = false;
+    let warnMs      = 0;
+    let confirmed   = false;
 
     function fmtRemaining(ms) {
       const h = Math.floor(ms / 3_600_000);
       const m = Math.floor((ms % 3_600_000) / 60000);
       return h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+    }
+
+    // Format a Date as "YYYY-MM-DDTHH:mm" for datetime-local input
+    function toLocalInputValue(date) {
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 
     async function init() {
@@ -269,7 +363,6 @@
         document.getElementById('dose').textContent = currentMed.dose;
         document.getElementById('card').style.borderTopColor = currentMed.color;
 
-        // Check last dose across all history (not just today)
         if (lastData.timestamp) {
           const ts        = String(lastData.timestamp).replace(' ', 'T');
           const doseMs    = new Date(ts).getTime();
@@ -281,17 +374,31 @@
         }
 
         document.getElementById('log-btn').disabled = false;
+        document.getElementById('custom-btn').disabled = false;
       } catch (err) {
         document.getElementById('med-name').textContent = 'Error loading';
         showToast('// ERR: check connection and try again', 'error');
       }
     }
 
+    function showCustomTime() {
+      document.getElementById('custom-time-input').value = toLocalInputValue(new Date());
+      document.getElementById('custom-panel').style.display = 'block';
+      document.getElementById('custom-btn').disabled = true;
+    }
+
+    function hideCustomTime() {
+      document.getElementById('custom-panel').style.display = 'none';
+      document.getElementById('custom-btn').disabled = false;
+      document.getElementById('custom-confirm-btn').disabled = false;
+      document.getElementById('custom-confirm-btn').innerHTML = '&#9654;&nbsp; Confirm Log';
+      document.getElementById('custom-confirm-btn').style.background = '';
+    }
+
     async function logDose() {
       const btn    = document.getElementById('log-btn');
       const cancel = document.getElementById('cancel-link');
 
-      // First tap when still within interval → warn, require second tap
       if (earlyWarn && !confirmed) {
         confirmed = true;
         showToast(
@@ -322,7 +429,48 @@
         setTimeout(() => { window.location.href = 'index.html'; }, 3000);
       } catch (err) {
         btn.disabled           = false;
-        btn.innerHTML          = earlyWarn ? '&#9888;&nbsp; Log Anyway' : '&#9654;&nbsp; Log Dose Now';
+        btn.innerHTML          = earlyWarn ? '&#9888;&nbsp; Log Anyway' : '&#9654;&nbsp; Log Now';
+        showToast('// ERR: failed — tap to retry', 'error');
+      }
+    }
+
+    async function logDoseCustom() {
+      const input   = document.getElementById('custom-time-input');
+      const confirm = document.getElementById('custom-confirm-btn');
+
+      if (!input.value) {
+        showToast('// ERR: select a date and time first', 'error');
+        return;
+      }
+
+      const customDate = new Date(input.value);
+      if (isNaN(customDate.getTime())) {
+        showToast('// ERR: invalid date/time selected', 'error');
+        return;
+      }
+
+      confirm.disabled    = true;
+      confirm.textContent = '... Transmitting';
+
+      // Pass timestamp as ISO string — Apps Script receives it via e.parameter.timestamp
+      const isoTs = customDate.toISOString();
+
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=logDose&medId=${encodeURIComponent(medId)}&timestamp=${encodeURIComponent(isoTs)}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        const timeStr = customDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        const dateStr = customDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        confirm.innerHTML = '&#10003;&nbsp; Logged';
+        confirm.style.background = 'var(--green-dim)';
+        showToast(`// OK: dose logged at ${timeStr} on ${dateStr}`, 'success');
+
+        setTimeout(() => { window.location.href = 'index.html'; }, 3000);
+      } catch (err) {
+        confirm.disabled  = false;
+        confirm.innerHTML = '&#9654;&nbsp; Confirm Log';
         showToast('// ERR: failed — tap to retry', 'error');
       }
     }
@@ -330,7 +478,7 @@
     function cancelLog() {
       confirmed              = false;
       const btn              = document.getElementById('log-btn');
-      btn.innerHTML          = '&#9654;&nbsp; Log Dose Now';
+      btn.innerHTML          = '&#9654;&nbsp; Log Now';
       btn.style.background   = '';
       btn.style.color        = '';
       document.getElementById('cancel-link').style.display = 'none';
