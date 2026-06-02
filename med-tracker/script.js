@@ -65,7 +65,8 @@ function doGet(e) {
     else if (action === 'getWeekStats')      result = getWeekStats();
     else if (action === 'startColdTherapy')  result = startColdTherapy();
     else if (action === 'stopColdTherapy')   result = stopColdTherapy(e.parameter);
-    else if (action === 'getColdTherapyLog') result = getColdTherapyLog();
+    else if (action === 'getColdTherapyLog')    result = getColdTherapyLog();
+    else if (action === 'getRomDegreeHistory') result = getRomDegreeHistory();
     else result = { error: 'Unknown action: ' + action };
   } catch (err) {
     result = { error: err.toString() };
@@ -546,6 +547,40 @@ function getWeekStats() {
     ptGoal,
     cold:   days.map(d => coldByDay[d])
   };
+}
+
+function getRomDegreeHistory() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ROM Log');
+  const data  = sheet.getDataRange().getValues();
+  const tz    = Session.getScriptTimeZone();
+
+  const start = new Date('2026-06-02T00:00:00');
+  const days  = [];
+  for (let i = 0; i < 21; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    days.push(Utilities.formatDate(d, tz, 'yyyy-MM-dd'));
+  }
+
+  const sumMap = {}, countMap = {};
+  days.forEach(d => { sumMap[d] = 0; countMap[d] = 0; });
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue;
+    const ds  = cellDateStr_(row[0], tz);
+    if (!(ds in sumMap)) continue;
+    const deg = row[4];
+    if (deg !== '' && deg !== null && deg !== undefined && !isNaN(Number(deg))) {
+      sumMap[ds]   += Number(deg);
+      countMap[ds] += 1;
+    }
+  }
+
+  return days.map(d => ({
+    date:       d,
+    avgDegrees: countMap[d] > 0 ? Math.round(sumMap[d] / countMap[d] * 10) / 10 : null
+  }));
 }
 
 function getMilestones() {

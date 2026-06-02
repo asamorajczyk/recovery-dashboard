@@ -301,6 +301,14 @@
       padding: 4px 0;
     }
 
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 16px 18px 12px;
+      margin-bottom: 16px;
+    }
+
     .footer {
       margin-top: 20px;
       display: flex;
@@ -348,6 +356,13 @@
     <!-- Session history -->
     <div class="sep"><div class="sep-line"></div><span>Today's sessions</span><div class="sep-line"></div></div>
     <div id="session-list"></div>
+
+    <!-- Degree history chart -->
+    <div class="sep"><div class="sep-line"></div><span>Degree history</span><div class="sep-line"></div></div>
+    <div class="chart-card">
+      <div class="progress-label">// daily avg degrees — jun 2–22 — goal: 90°</div>
+      <canvas id="degree-chart" style="display:block;width:100%;margin-top:12px;"></canvas>
+    </div>
 
     <div class="footer">
       <span id="footer-time">—</span>
@@ -507,6 +522,7 @@
         showToast(`// OK: ${fmtMinutes(durationMinutes)}${degStr} logged`, 'success');
         updateProgressUI(0);
         loadSessions();
+        loadDegreeChart();
 
       } catch (err) {
         btn.innerHTML = '&#9632;&nbsp; Stop Session';
@@ -575,7 +591,100 @@
 
     document.getElementById('footer-goal').textContent = `goal: ${schedule.label} / day`;
 
+    async function loadDegreeChart() {
+      try {
+        const res  = await fetch(`${SCRIPT_URL}?action=getRomDegreeHistory`);
+        const data = await res.json();
+        if (Array.isArray(data)) renderDegreeChart(data);
+      } catch (err) { /* silent */ }
+    }
+
+    function renderDegreeChart(data) {
+      const canvas = document.getElementById('degree-chart');
+      if (!canvas) return;
+
+      const dpr  = window.devicePixelRatio || 1;
+      const lw   = canvas.clientWidth || 380;
+      const lh   = 155;
+
+      canvas.width       = lw * dpr;
+      canvas.height      = lh * dpr;
+      canvas.style.height = lh + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const PL = 32, PR = 8, PT = 8, PB = 20;
+      const cw = lw - PL - PR;
+      const ch = lh - PT - PB;
+      const MAX = 120, GOAL = 90;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const yPos = deg => PT + ch - (deg / MAX) * ch;
+
+      // Background
+      ctx.fillStyle = '#161719';
+      ctx.fillRect(0, 0, lw, lh);
+
+      // Grid lines (skip 90° — that's the goal line)
+      ctx.strokeStyle = '#2a2d32';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([]);
+      [0, 30, 60, 120].forEach(deg => {
+        ctx.beginPath(); ctx.moveTo(PL, yPos(deg)); ctx.lineTo(PL + cw, yPos(deg)); ctx.stroke();
+      });
+
+      // Y-axis labels
+      ctx.font      = `8px 'Share Tech Mono', monospace`;
+      ctx.textAlign = 'right';
+      [0, 30, 60, 90, 120].forEach(deg => {
+        ctx.fillStyle = deg === GOAL ? '#22c55e' : '#6b7280';
+        ctx.fillText(deg + '°', PL - 4, yPos(deg) + 3);
+      });
+
+      // Goal line
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(PL, yPos(GOAL)); ctx.lineTo(PL + cw, yPos(GOAL));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Bars
+      const n   = data.length;
+      const gap = cw / n;
+      const bw  = Math.max(2, gap * 0.6);
+
+      data.forEach((d, i) => {
+        const cx       = PL + i * gap + gap / 2;
+        const isFuture = d.date > todayStr;
+        const isToday  = d.date === todayStr;
+
+        if (d.avgDegrees !== null && !isFuture) {
+          const bh = Math.max(1, (d.avgDegrees / MAX) * ch);
+          ctx.fillStyle = d.avgDegrees >= GOAL
+            ? (isToday ? '#4ade80' : '#22c55e')
+            : (isToday ? '#fb923c' : '#e05c1a');
+          ctx.fillRect(cx - bw / 2, yPos(d.avgDegrees), bw, bh);
+        } else if (!isFuture) {
+          // Past day with no data — dim tick at baseline
+          ctx.fillStyle = '#2a2d32';
+          ctx.fillRect(cx - bw / 2, PT + ch - 2, bw, 2);
+        }
+
+        // X-axis labels at week starts + last day
+        if (i === 0 || i === 7 || i === 14 || i === 20) {
+          const dt = new Date(d.date + 'T12:00:00');
+          ctx.fillStyle = '#6b7280';
+          ctx.font      = `8px 'Share Tech Mono', monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillText((dt.getMonth() + 1) + '/' + dt.getDate(), cx, lh - 4);
+        }
+      });
+    }
+
     loadSessions();
+    loadDegreeChart();
     setInterval(loadSessions, 300_000);
   </script>
 </body>
