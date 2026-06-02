@@ -360,7 +360,7 @@
     <!-- Degree history chart -->
     <div class="sep"><div class="sep-line"></div><span>Degree history</span><div class="sep-line"></div></div>
     <div class="chart-card">
-      <div class="progress-label">// daily avg degrees — jun 2–22 — goal: 90°</div>
+      <div class="progress-label">// daily avg degrees — goal: 30° → 90° over 21 days</div>
       <canvas id="degree-chart" style="display:block;width:100%;margin-top:12px;"></canvas>
     </div>
 
@@ -607,8 +607,8 @@
       const lw   = canvas.clientWidth || 380;
       const lh   = 155;
 
-      canvas.width       = lw * dpr;
-      canvas.height      = lh * dpr;
+      canvas.width        = lw * dpr;
+      canvas.height       = lh * dpr;
       canvas.style.height = lh + 'px';
 
       const ctx = canvas.getContext('2d');
@@ -617,19 +617,20 @@
       const PL = 32, PR = 8, PT = 8, PB = 20;
       const cw = lw - PL - PR;
       const ch = lh - PT - PB;
-      const MAX = 120, GOAL = 90;
+      const MAX = 120;
       const todayStr = new Date().toISOString().slice(0, 10);
-      const yPos = deg => PT + ch - (deg / MAX) * ch;
+      const yPos   = deg => PT + ch - (deg / MAX) * ch;
+      const dayGoal = i  => 30 + (60 * i / 20); // 30° day 1 → 90° day 21
 
       // Background
       ctx.fillStyle = '#161719';
       ctx.fillRect(0, 0, lw, lh);
 
-      // Grid lines (skip 90° — that's the goal line)
+      // Grid lines
       ctx.strokeStyle = '#2a2d32';
       ctx.lineWidth   = 1;
       ctx.setLineDash([]);
-      [0, 30, 60, 120].forEach(deg => {
+      [0, 30, 60, 90, 120].forEach(deg => {
         ctx.beginPath(); ctx.moveTo(PL, yPos(deg)); ctx.lineTo(PL + cw, yPos(deg)); ctx.stroke();
       });
 
@@ -637,37 +638,38 @@
       ctx.font      = `8px 'Share Tech Mono', monospace`;
       ctx.textAlign = 'right';
       [0, 30, 60, 90, 120].forEach(deg => {
-        ctx.fillStyle = deg === GOAL ? '#22c55e' : '#6b7280';
+        ctx.fillStyle = '#6b7280';
         ctx.fillText(deg + '°', PL - 4, yPos(deg) + 3);
       });
 
-      // Goal line
-      ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth   = 1;
-      ctx.setLineDash([3, 5]);
-      ctx.beginPath();
-      ctx.moveTo(PL, yPos(GOAL)); ctx.lineTo(PL + cw, yPos(GOAL));
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Bars
+      // Diagonal goal line: 30° on day 1 → 90° on day 21
       const n   = data.length;
       const gap = cw / n;
       const bw  = Math.max(2, gap * 0.6);
 
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([3, 5]);
+      ctx.beginPath();
+      ctx.moveTo(PL + gap / 2,            yPos(dayGoal(0)));
+      ctx.lineTo(PL + 20 * gap + gap / 2, yPos(dayGoal(20)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Bars
       data.forEach((d, i) => {
         const cx       = PL + i * gap + gap / 2;
         const isFuture = d.date > todayStr;
         const isToday  = d.date === todayStr;
+        const target   = dayGoal(i);
 
         if (d.avgDegrees !== null && !isFuture) {
           const bh = Math.max(1, (d.avgDegrees / MAX) * ch);
-          ctx.fillStyle = d.avgDegrees >= GOAL
+          ctx.fillStyle = d.avgDegrees >= target
             ? (isToday ? '#4ade80' : '#22c55e')
             : (isToday ? '#fb923c' : '#e05c1a');
           ctx.fillRect(cx - bw / 2, yPos(d.avgDegrees), bw, bh);
         } else if (!isFuture) {
-          // Past day with no data — dim tick at baseline
           ctx.fillStyle = '#2a2d32';
           ctx.fillRect(cx - bw / 2, PT + ch - 2, bw, 2);
         }
