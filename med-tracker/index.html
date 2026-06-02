@@ -285,6 +285,7 @@
       border-color: var(--yellow);
       color: var(--yellow);
     }
+
   </style>
 </head>
 <body>
@@ -457,6 +458,7 @@
 
       if (tickInterval) clearInterval(tickInterval);
       tickInterval = setInterval(tick, 60_000);
+      checkDueNotifications();
     }
 
     function tick() {
@@ -479,6 +481,7 @@
           el.textContent = formatCountdown(remaining);
         }
       });
+      checkDueNotifications();
     }
 
     let toastTimer = null;
@@ -572,6 +575,7 @@
 
         if (data.error) throw new Error(data.error);
 
+        notifiedMeds.delete(medId);
         btn.textContent = '✓ LOGGED';
         btn.classList.add('success');
         showToast(
@@ -585,6 +589,40 @@
         showToast('// ERR: failed to log — tap to retry', 'toast-err');
       }
     }
+
+    // --- ntfy notifications ---
+
+    const NTFY_TOPIC = 'Jessies-Recovery-Help-Button-aka-Annoy-Ashley-Button';
+    const notifiedMeds = new Set();
+
+    async function sendDueNotification(med) {
+      if (notifiedMeds.has(med.id)) return;
+      notifiedMeds.add(med.id);
+      try {
+        await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+          method: 'POST',
+          headers: {
+            'Title': `Med Due: ${med.name}`,
+            'Priority': 'high',
+            'Tags': 'pill'
+          },
+          body: `${med.dose} — time to take ${med.name}`
+        });
+      } catch (_) {
+        notifiedMeds.delete(med.id);
+      }
+    }
+
+    function checkDueNotifications() {
+      meds.forEach(med => {
+        if (med.as_needed) return;
+        const last = lastDoseFor(med.id);
+        const remaining = msRemaining(last, med.interval_hours);
+        if (remaining === null || remaining <= 0) sendDueNotification(med);
+      });
+    }
+
+    // --- end ntfy ---
 
     loadData();
     setInterval(loadData, 300_000);

@@ -509,7 +509,7 @@
     function saveLocalFallback(event, durationSec) {
       const key  = 'cold_therapy_fallback';
       const list = JSON.parse(localStorage.getItem(key) || '[]');
-      list.push({ timestamp: new Date().toISOString(), event, duration_sec: durationSec });
+      list.push({ timestamp: new Date().toISOString(), event, duration_hours: durationSec / 3600 });
       localStorage.setItem(key, JSON.stringify(list));
     }
 
@@ -531,7 +531,7 @@
         renderSessionLog(todayLocal.map(s => ({
           timestamp: s.timestamp,
           event: s.event,
-          duration_sec: s.duration_sec
+          duration_hours: s.duration_hours
         })));
       }
     }
@@ -571,11 +571,9 @@
         const row  = document.createElement('div');
         row.className = 'log-row';
 
-        const mins = Math.floor(s.duration_sec / 60);
-        const secs = s.duration_sec % 60;
-        const durStr = mins > 0
-          ? `${mins}:${String(secs).padStart(2,'0')}`
-          : `0:${String(secs).padStart(2,'0')}`;
+        const h = Math.floor(s.duration_hours);
+        const m = Math.round((s.duration_hours - h) * 60);
+        const durStr = h > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
 
         const isComplete = (s.event || '').toLowerCase() !== 'stopped';
         const badgeClass = isComplete ? 'complete' : 'stopped';

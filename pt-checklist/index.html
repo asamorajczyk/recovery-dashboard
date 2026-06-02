@@ -390,10 +390,11 @@
       let totalComplete = 0;
 
       exercises.forEach(ex => {
-        const done     = Math.min(setsFor(ex.id), ex.sets);
-        const pct      = ex.sets > 0 ? Math.round((done / ex.sets) * 100) : 0;
-        const complete = done >= ex.sets;
+        const done     = Math.min(setsFor(ex.id), ex.daily_sets);
+        const pct      = ex.daily_sets > 0 ? Math.round((done / ex.daily_sets) * 100) : 0;
+        const complete = done >= ex.daily_sets;
         const hasPhoto = ex.image_filename && ex.image_filename !== 'undefined' && ex.image_filename.trim() !== '';
+        const repLabel = ex.repeat + (ex.hold ? ' · ' + ex.hold + ' hold' : '');
 
         if (complete) totalComplete++;
 
@@ -404,10 +405,10 @@
           <div class="exercise-top">
             <div class="exercise-info">
               <div class="exercise-name">${ex.name}</div>
-              <div class="exercise-reps">${ex.reps_per_set} &middot; ${ex.sets} sets</div>
+              <div class="exercise-reps">${repLabel} &middot; ${ex.perform_per_day}x/day</div>
             </div>
             <div class="exercise-right">
-              <div class="set-count">${done}/${ex.sets}</div>
+              <div class="set-count">${done}/${ex.daily_sets}</div>
               <div class="btn-row">
                 <button class="btn-minus"
                   ${done === 0 ? 'disabled' : ''}
@@ -443,7 +444,7 @@
 
       const current = setsFor(id);
       if (delta < 0 && current <= 0) return;
-      if (delta > 0 && current >= ex.sets) return;
+      if (delta > 0 && current >= ex.daily_sets) return;
 
       // Optimistic update
       pending[id] = (pending[id] || 0) + delta;

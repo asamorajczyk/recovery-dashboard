@@ -1,6 +1,25 @@
 // Paste this entire file into Extensions > Apps Script in your Google Sheet
 // Then deploy as a web app (see README for steps)
 
+function parseCount_(str, def) {
+  const m = String(str || '').match(/(\d+)/);
+  return m ? Number(m[1]) : def;
+}
+
+// Combines a date cell and a time cell (both may be Date objects or strings)
+// into a formatted 'yyyy-MM-dd HH:mm:ss' string.
+function combineDateTime_(dateCell, timeCell, tz) {
+  const d = (dateCell instanceof Date) ? dateCell : new Date(String(dateCell));
+  const t = (timeCell instanceof Date) ? timeCell : new Date('2000-01-01 ' + String(timeCell));
+  const combined = new Date(
+    d.getFullYear(), d.getMonth(), d.getDate(),
+    isNaN(t) ? 0 : t.getHours(),
+    isNaN(t) ? 0 : t.getMinutes(),
+    isNaN(t) ? 0 : t.getSeconds()
+  );
+  return Utilities.formatDate(combined, tz, 'yyyy-MM-dd HH:mm:ss');
+}
+
 function doGet(e) {
   const action = e.parameter.action;
   let result;
@@ -36,14 +55,27 @@ function doGet(e) {
 function getMeds() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Medications');
   const data = sheet.getDataRange().getValues();
+  const tz = Session.getScriptTimeZone();
+  const todayStr = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   const meds = [];
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const active = row[6];
+
+    // Auto-activate if start_date = today and currently inactive
+    let active = row[8];
+    const isActive = active === true || String(active).toUpperCase() === 'TRUE';
+    if (!isActive && row[6]) {
+      const startStr = Utilities.formatDate(new Date(row[6]), tz, 'yyyy-MM-dd');
+      if (startStr === todayStr) {
+        sheet.getRange(i + 1, 9).setValue(true);
+        active = true;
+      }
+    }
+
     if (active === true || String(active).toUpperCase() === 'TRUE') {
-      const asNeeded = row[7];
+      const asNeeded = row[9];
       meds.push({
         id:             String(row[0]),
         name:           String(row[1]),
@@ -52,7 +84,7 @@ function getMeds() {
         interval_hours: Number(row[4]) || 6,
         color:          String(row[5]),
         as_needed:      asNeeded === true || String(asNeeded).toUpperCase() === 'TRUE',
-        notes:          String(row[8] || '')
+        notes:          String(row[10] || '')
       });
     }
   }
@@ -76,11 +108,11 @@ function getTodayLog() {
     const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
     if (rowDate === todayStr) {
       log.push({
-        timestamp: row[0],
-        med_id:    String(row[1]),
-        med_name:  String(row[2]),
-        dose:      String(row[3]),
-        num_pills: Number(row[4]) || 0
+        timestamp: combineDateTime_(row[0], row[1], tz),
+        med_id:    String(row[2]),
+        med_name:  String(row[3]),
+        dose:      String(row[4]),
+        num_pills: Number(row[5]) || 0
       });
     }
   }
@@ -122,9 +154,12 @@ function logDose(params) {
 
   const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
   const tz = Session.getScriptTimeZone();
-  const timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+  const now = new Date();
+  const dateVal = Utilities.formatDate(now, tz, 'M/d/yyyy');
+  const timeVal = Utilities.formatDate(now, tz, 'h:mm a');
+  const timestamp = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
 
-  logSheet.appendRow([timestamp, med.id, med.name, med.dose, med.num_pills]);
+  logSheet.appendRow([dateVal, timeVal, med.id, med.name, med.dose, med.num_pills]);
 
   return { success: true, timestamp, med: med.name };
 }
@@ -209,14 +244,19 @@ function getPtExercises() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const active = row[5];
+    const active = row[7];
     if (active === true || String(active).toUpperCase() === 'TRUE') {
+      const setsPerSession = parseCount_(String(row[4] || '1'), 1);
+      const performPerDay  = parseCount_(String(row[5] || '1'), 1);
       exercises.push({
-        id:             String(row[0]),
-        name:           String(row[1]),
-        reps_per_set:   String(row[2]),
-        sets:           Number(row[3]) || 3,
-        image_filename: String(row[4] || ''),
+        id:               String(row[0]),
+        name:             String(row[1]),
+        repeat:           String(row[2] || ''),
+        hold:             String(row[3] || ''),
+        sets_per_session: setsPerSession,
+        perform_per_day:  performPerDay,
+        daily_sets:       setsPerSession * performPerDay,
+        image_filename:   String(row[6] || ''),
       });
     }
   }
@@ -253,11 +293,12 @@ function getLastDose(params) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (!row[0] || String(row[1]) !== medId) continue;
-    const ms = new Date(row[0]).getTime();
+    if (!row[0] || String(row[2]) !== medId) continue;
+    const combined = combineDateTime_(row[0], row[1], tz);
+    const ms = new Date(combined).getTime();
     if (ms > bestMs) {
       bestMs        = ms;
-      bestTimestamp = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd HH:mm:ss');
+      bestTimestamp = combined;
     }
   }
 
@@ -304,11 +345,15 @@ function logColdTherapy(params) {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Cold Therapy Log');
   const tz    = Session.getScriptTimeZone();
-  const timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+  const now   = new Date();
+  const dateVal      = Utilities.formatDate(now, tz, 'M/d/yyyy');
+  const timeVal      = Utilities.formatDate(now, tz, 'h:mm a');
+  const timestamp    = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
+  const durationHours = Math.round((durationSec / 3600) * 10000) / 10000;
 
-  sheet.appendRow([timestamp, event, durationSec]);
+  sheet.appendRow([dateVal, timeVal, event, durationHours]);
 
-  return { success: true, timestamp, event, duration_sec: durationSec };
+  return { success: true, timestamp, event, duration_hours: durationHours };
 }
 
 function getColdTherapyLog() {
@@ -326,11 +371,11 @@ function getColdTherapyLog() {
     if (!row[0]) continue;
     const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
     if (rowDate === todayStr) {
-      const event = String(row[1]).trim().toLowerCase();
+      const event = String(row[2]).trim().toLowerCase();
       sessions.push({
-        timestamp:    String(row[0]),
-        event:        event === 'stopped' ? 'stopped' : 'complete',
-        duration_sec: Number(row[2]) || 0
+        timestamp:      combineDateTime_(row[0], row[1], tz),
+        event:          event === 'stopped' ? 'stopped' : 'complete',
+        duration_hours: Number(row[3]) || 0
       });
     }
   }
@@ -388,8 +433,10 @@ function getWeekStats() {
   const ptExData  = ptExSheet.getDataRange().getValues();
   let ptGoal = 0;
   for (let i = 1; i < ptExData.length; i++) {
-    const active = ptExData[i][5];
-    if (active === true || String(active).toUpperCase() === 'TRUE') ptGoal += Number(ptExData[i][3]) || 0;
+    const active = ptExData[i][7];
+    if (active === true || String(active).toUpperCase() === 'TRUE') {
+      ptGoal += parseCount_(String(ptExData[i][4] || '1'), 1) * parseCount_(String(ptExData[i][5] || '1'), 1);
+    }
   }
 
   // Cold therapy

@@ -575,8 +575,8 @@
         const exercises = await exRes.json();
         const todaySets = await ptRes.json();
 
-        const totalSets = exercises.reduce((s, ex) => s + ex.sets, 0);
-        const doneSets  = exercises.reduce((s, ex) => s + Math.min(todaySets[ex.id] || 0, ex.sets), 0);
+        const totalSets = exercises.reduce((s, ex) => s + ex.daily_sets, 0);
+        const doneSets  = exercises.reduce((s, ex) => s + Math.min(todaySets[ex.id] || 0, ex.daily_sets), 0);
         const allDone   = doneSets >= totalSets && totalSets > 0;
 
         const blurb = document.getElementById('pt-blurb');
@@ -657,12 +657,11 @@
         else if (totalMin < 60) agoStr = `${totalMin}m ago`;
         else { const h = Math.floor(totalMin / 60); const m = totalMin % 60; agoStr = m === 0 ? `${h}h ago` : `${h}h ${m}m ago`; }
 
-        const complete  = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
-        const totalSec  = sessions.reduce((sum, s) => sum + (Number(s.duration_sec) || 0), 0);
-        const totalMins = Math.floor(totalSec / 60);
-        const totalH    = Math.floor(totalMins / 60);
-        const totalMrem = totalMins % 60;
-        const totalStr  = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${totalMins}m`;
+        const complete    = sessions.filter(s => (s.event || '').toLowerCase() !== 'stopped').length;
+        const totalHours  = sessions.reduce((sum, s) => sum + (Number(s.duration_hours) || 0), 0);
+        const totalH      = Math.floor(totalHours);
+        const totalMrem   = Math.round((totalHours - totalH) * 60);
+        const totalStr    = totalH > 0 ? `${totalH}h ${totalMrem}m` : `${Math.round(totalHours * 60)}m`;
 
         blurb.innerHTML = `last ice: ${agoStr}<br>${complete} session${complete !== 1 ? 's' : ''} today &middot; ${totalStr}`;
 
