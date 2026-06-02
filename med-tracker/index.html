@@ -801,6 +801,7 @@
     const notifiedMeds = new Set();
 
     async function sendDueNotification(med) {
+      return; // ntfy disabled
       if (notifiedMeds.has(med.id)) return;
       notifiedMeds.add(med.id);
       try {
