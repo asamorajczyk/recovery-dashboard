@@ -486,7 +486,9 @@
 
     function msRemaining(lastDose, intervalHours) {
       if (!lastDose) return null;
-      return parseTs(lastDose.timestamp).getTime() + intervalHours * 3_600_000 - Date.now();
+      const t = parseTs(lastDose.timestamp).getTime();
+      if (isNaN(t)) return null;
+      return t + intervalHours * 3_600_000 - Date.now();
     }
 
     function formatCountdown(ms) {

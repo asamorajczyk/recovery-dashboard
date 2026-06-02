@@ -6,18 +6,40 @@ function parseCount_(str, def) {
   return m ? Number(m[1]) : def;
 }
 
+// Parses a date cell (Date object or "M/d/yyyy" string) → "yyyy-MM-dd"
+function cellDateStr_(dateCell, tz) {
+  if (dateCell instanceof Date) return Utilities.formatDate(dateCell, tz, 'yyyy-MM-dd');
+  const str = String(dateCell).trim();
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+}
+
 // Combines a date cell and a time cell (both may be Date objects or strings)
 // into a formatted 'yyyy-MM-dd HH:mm:ss' string.
+// Parses text time strings directly via regex — new Date('2000-01-01 2:30 PM')
+// fails in GAS V8 and returns midnight, so we can't rely on it.
 function combineDateTime_(dateCell, timeCell, tz) {
-  const d = (dateCell instanceof Date) ? dateCell : new Date(String(dateCell));
-  const t = (timeCell instanceof Date) ? timeCell : new Date('2000-01-01 ' + String(timeCell));
-  const combined = new Date(
-    d.getFullYear(), d.getMonth(), d.getDate(),
-    isNaN(t) ? 0 : t.getHours(),
-    isNaN(t) ? 0 : t.getMinutes(),
-    isNaN(t) ? 0 : t.getSeconds()
-  );
-  return Utilities.formatDate(combined, tz, 'yyyy-MM-dd HH:mm:ss');
+  const datePart = cellDateStr_(dateCell, tz);
+
+  let timePart;
+  if (timeCell instanceof Date) {
+    timePart = Utilities.formatDate(timeCell, tz, 'HH:mm:ss');
+  } else {
+    const str = String(timeCell).trim();
+    const m   = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i);
+    if (m) {
+      let h = parseInt(m[1], 10);
+      if ((m[4] || '').toLowerCase() === 'pm' && h < 12) h += 12;
+      if ((m[4] || '').toLowerCase() === 'am' && h === 12) h = 0;
+      timePart = `${String(h).padStart(2,'0')}:${m[2]}:${m[3] || '00'}`;
+    } else {
+      timePart = '00:00:00';
+    }
+  }
+
+  return `${datePart} ${timePart}`;
 }
 
 function doGet(e) {
@@ -107,16 +129,16 @@ function getTodayLog() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
-    if (rowDate === todayStr) {
-      log.push({
-        timestamp: combineDateTime_(row[0], row[1], tz),
-        med_id:    String(row[2]),
-        med_name:  String(row[3]),
-        dose:      String(row[4]),
-        num_pills: Number(row[5]) || 0
-      });
-    }
+    const ts      = String(row[6] || '').trim();
+    const rowDate = ts ? ts.slice(0, 10) : cellDateStr_(row[0], tz);
+    if (rowDate !== todayStr) continue;
+    log.push({
+      timestamp: ts || combineDateTime_(row[0], row[1], tz),
+      med_id:    String(row[2]),
+      med_name:  String(row[3]),
+      dose:      String(row[4]),
+      num_pills: Number(row[5]) || 0
+    });
   }
 
   return log;
@@ -161,7 +183,7 @@ function logDose(params) {
   const timeVal = Utilities.formatDate(now, tz, 'h:mm a');
   const timestamp = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
 
-  logSheet.appendRow([dateVal, timeVal, med.id, med.name, med.dose, med.num_pills]);
+  logSheet.appendRow([dateVal, timeVal, med.id, med.name, med.dose, med.num_pills, timestamp]);
 
   return { success: true, timestamp, med: med.name };
 }
@@ -195,7 +217,7 @@ function getTodayRom() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    const rowDate = cellDateStr_(row[0], tz);
     if (rowDate === todayStr) {
       sessions.push({
         date:            rowDate,
@@ -221,7 +243,7 @@ function getAppointments() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const dateStr = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    const dateStr = cellDateStr_(row[0], tz);
     if (dateStr >= todayStr) {
       // row[1] is a time cell — Sheets returns these as Date objects anchored to Dec 30 1899
       let timeStr = '';
@@ -302,21 +324,14 @@ function getLastDose(params) {
   const data  = sheet.getDataRange().getValues();
   const tz    = Session.getScriptTimeZone();
 
-  let bestMs        = 0;
-  let bestTimestamp = null;
-
-  for (let i = 1; i < data.length; i++) {
+  for (let i = data.length - 1; i >= 1; i--) {
     const row = data[i];
     if (!row[0] || String(row[2]) !== medId) continue;
-    const combined = combineDateTime_(row[0], row[1], tz);
-    const ms = new Date(combined).getTime();
-    if (ms > bestMs) {
-      bestMs        = ms;
-      bestTimestamp = combined;
-    }
+    const ts = String(row[6] || '').trim();
+    return { timestamp: ts || combineDateTime_(row[0], row[1], tz) };
   }
 
-  return { timestamp: bestTimestamp };
+  return { timestamp: null };
 }
 
 function getLastDoses() {
@@ -324,18 +339,15 @@ function getLastDoses() {
   const data  = sheet.getDataRange().getValues();
   const tz    = Session.getScriptTimeZone();
 
-  const bestMs = {};
-  const best   = {};
+  const best = {};
 
-  for (let i = 1; i < data.length; i++) {
+  for (let i = data.length - 1; i >= 1; i--) {
     const row = data[i];
     if (!row[0]) continue;
-    const medId    = String(row[2]);
-    const combined = combineDateTime_(row[0], row[1], tz);
-    const ms       = new Date(combined).getTime();
-    if (!bestMs[medId] || ms > bestMs[medId]) {
-      bestMs[medId] = ms;
-      best[medId]   = combined;
+    const medId = String(row[2]);
+    if (!best[medId]) {
+      const ts = String(row[6] || '').trim();
+      best[medId] = ts || combineDateTime_(row[0], row[1], tz);
     }
   }
 
@@ -363,7 +375,7 @@ function getTodayPain() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    const rowDate = cellDateStr_(row[0], tz);
     if (rowDate === todayStr) {
       entries.push({ timestamp: String(row[0]), score: Number(row[1]) || 0, notes: String(row[2] || '') });
     }
@@ -430,7 +442,7 @@ function getColdTherapyLog() {
     const row = data[i];
     if (!row[0]) continue;
 
-    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    const rowDate = cellDateStr_(row[0], tz);
     if (rowDate !== todayStr) continue;
 
     const startTs    = combineDateTime_(row[0], row[1], tz);
@@ -476,7 +488,7 @@ function getWeekStats() {
   const romByDay = initMap();
   for (let i = 1; i < romData.length; i++) {
     if (!romData[i][0]) continue;
-    const ds = Utilities.formatDate(new Date(romData[i][0]), tz, 'yyyy-MM-dd');
+    const ds = cellDateStr_(romData[i][0], tz);
     if (ds in romByDay) romByDay[ds] += Number(romData[i][3]) || 0;
   }
 
@@ -486,7 +498,7 @@ function getWeekStats() {
   const painSum   = initMap(), painCount = initMap();
   for (let i = 1; i < painData.length; i++) {
     if (!painData[i][0]) continue;
-    const ds = Utilities.formatDate(new Date(painData[i][0]), tz, 'yyyy-MM-dd');
+    const ds = cellDateStr_(painData[i][0], tz);
     if (ds in painSum) { painSum[ds] += Number(painData[i][1]) || 0; painCount[ds]++; }
   }
 
@@ -496,7 +508,7 @@ function getWeekStats() {
   const ptByDay    = initMap();
   for (let i = 1; i < ptLogData.length; i++) {
     if (!ptLogData[i][0]) continue;
-    const ds = Utilities.formatDate(new Date(ptLogData[i][0]), tz, 'yyyy-MM-dd');
+    const ds = cellDateStr_(ptLogData[i][0], tz);
     if (ds in ptByDay) ptByDay[ds] += Number(ptLogData[i][3]) || 0;
   }
 
@@ -517,7 +529,7 @@ function getWeekStats() {
   const coldByDay = initMap();
   for (let i = 1; i < coldData.length; i++) {
     if (!coldData[i][0]) continue;
-    const ds     = Utilities.formatDate(new Date(coldData[i][0]), tz, 'yyyy-MM-dd');
+    const ds     = cellDateStr_(coldData[i][0], tz);
     const status = String(coldData[i][5]).trim().toLowerCase();
     if (ds in coldByDay && status === 'completed') coldByDay[ds]++;
   }
@@ -567,7 +579,7 @@ function getTodayPt() {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (!row[0]) continue;
-    const rowDate = Utilities.formatDate(new Date(row[0]), tz, 'yyyy-MM-dd');
+    const rowDate = cellDateStr_(row[0], tz);
     if (rowDate !== todayStr) continue;
     const id = String(row[1]);
     totals[id] = (totals[id] || 0) + (Number(row[3]) || 0);
