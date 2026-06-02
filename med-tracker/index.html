@@ -362,7 +362,10 @@
     }
 
     function timeAgo(timestamp) {
-      const mins = Math.floor((Date.now() - parseTs(timestamp)) / 60000);
+      const d = parseTs(timestamp);
+      if (isNaN(d)) return '—';
+      const mins = Math.max(0, Math.floor((Date.now() - d) / 60000));
+      if (mins < 1) return 'just now';
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       return h > 0 ? `${h}h ${m}m ago` : `${mins}m ago`;
@@ -392,7 +395,7 @@
             <div class="med-name">${med.name}</div>
             <div class="med-dose">${med.dose}</div>
             ${med.notes ? `<div class="med-notes">${med.notes}</div>` : ''}
-            ${last ? `<div class="med-last">${timeAgo(last.timestamp)}</div>` : ''}
+            ${last ? `<div class="med-last" data-timestamp="${last.timestamp}">last dose: ${timeAgo(last.timestamp)}</div>` : ''}
           </div>
           <div class="med-card-right">
             <div class="med-status as-needed">AS NEEDED</div>
@@ -432,7 +435,7 @@
           <div class="med-name">${med.name}</div>
           <div class="med-dose">${med.dose}</div>
           ${med.notes ? `<div class="med-notes">${med.notes}</div>` : ''}
-          ${last ? `<div class="med-last">${timeAgo(last.timestamp)}</div>` : ''}
+          ${last ? `<div class="med-last" data-timestamp="${last.timestamp}">last dose: ${timeAgo(last.timestamp)}</div>` : ''}
         </div>
         <div class="med-card-right">
           <div class="med-status ${statusClass}" data-med-id="${med.id}">${statusText}</div>
@@ -495,6 +498,9 @@
           el.className = 'med-status';
           el.textContent = formatCountdown(remaining);
         }
+      });
+      document.querySelectorAll('.med-last[data-timestamp]').forEach(el => {
+        el.textContent = 'last dose: ' + timeAgo(el.dataset.timestamp);
       });
       checkDueNotifications();
     }
