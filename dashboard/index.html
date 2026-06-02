@@ -602,19 +602,29 @@
       }
     }
 
+    function getRomSchedule() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date('2026-06-02T00:00:00');
+      const week = Math.floor(Math.floor((today - start) / 86400000) / 7) + 1;
+      if (week <= 2) return { goal: 45,  label: '3 × 15 min' };
+      if (week === 3) return { goal: 50, label: '2 × 25 min' };
+      return                 { goal: 60, label: '2 × 30 min' };
+    }
+
     async function loadRomStatus() {
       try {
         const res  = await fetch(`${SCRIPT_URL}?action=getTodayRom`);
         const data = await res.json();
-        const total = data.totalMinutes || 0;
-        const h = Math.floor(total / 60);
-        const m = total % 60;
-        const done = total >= 240;
+        const total    = data.totalMinutes || 0;
+        const schedule = getRomSchedule();
+        const done     = total >= schedule.goal;
+        const fmtMin   = m => m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`;
         const blurb = document.getElementById('rom-blurb');
         const card  = document.getElementById('rom-card');
         blurb.innerHTML = done
-          ? `<span style="color:var(--green)">&#10003; goal reached &mdash; ${h}h ${String(m).padStart(2,'0')}m today</span>`
-          : `${h}h ${String(m).padStart(2,'0')}m / 4h 00m today`;
+          ? `<span style="color:var(--green)">&#10003; goal reached &mdash; ${fmtMin(total)} today</span>`
+          : `${fmtMin(total)} / ${fmtMin(schedule.goal)} today<br>${schedule.label} / day`;
         card.style.borderLeftColor = done ? 'var(--green)' : total > 0 ? 'var(--yellow)' : 'var(--border-bright)';
       } catch (err) {
         document.getElementById('rom-blurb').textContent = '// could not load';
