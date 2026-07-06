@@ -54,6 +54,7 @@ function doGet(e) {
     else if (action === 'logRomSession')  result = logRomSession(e.parameter);
     else if (action === 'getTodayRom')    result = getTodayRom();
     else if (action === 'getAppointments') result = getAppointments();
+    else if (action === 'updateAppointment') result = updateAppointment(e.parameter);
     else if (action === 'getPtExercises')  result = getPtExercises();
     else if (action === 'logPtSets')      result = logPtSets(e.parameter);
     else if (action === 'getTodayPt')     result = getTodayPt();
@@ -250,17 +251,16 @@ function getAppointments() {
     if (!row[0]) continue;
     const dateStr = cellDateStr_(row[0], tz);
     if (dateStr >= todayStr) {
-      // row[1] is a time cell — Sheets returns these as Date objects anchored to Dec 30 1899
-      let timeStr = '';
-      if (row[1] instanceof Date) {
-        const yr = row[1].getFullYear();
-        if (yr === 1899 || yr === 1900) {
-          timeStr = Utilities.formatDate(row[1], tz, 'h:mm a');
-        }
-      } else {
-        timeStr = String(row[1] || '');
-      }
+      // row[1] is a time cell — Sheets returns these as Date objects (usually anchored
+      // to Dec 30 1899, but always format by time-of-day rather than gating on the year,
+      // since a raw Date coerced via String() prints "Sat Dec 30 1899 ... GMT-0600 (...)".
+      const isTimeCell = row[1] instanceof Date ||
+        (row[1] && typeof row[1].getTime === 'function' && typeof row[1].getFullYear === 'function');
+      const timeStr = isTimeCell
+        ? Utilities.formatDate(row[1], tz, 'h:mm a')
+        : String(row[1] || '');
       appts.push({
+        row:              i + 1,
         date:             dateStr,
         time:             timeStr,
         title:            String(row[2] || ''),
@@ -274,6 +274,26 @@ function getAppointments() {
 
   appts.sort((a, b) => a.date.localeCompare(b.date));
   return appts;
+}
+
+function updateAppointment(params) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Appointments');
+  const row   = Number(params.row);
+  if (!row || row < 2) return { error: 'Invalid row' };
+
+  const dateVal = params.date ? new Date(params.date + 'T00:00:00') : '';
+
+  sheet.getRange(row, 1, 1, 7).setValues([[
+    dateVal,
+    params.time || '',
+    params.title || '',
+    params.with || '',
+    params.location_name || '',
+    params.location_address || '',
+    params.notes || ''
+  ]]);
+
+  return { success: true };
 }
 
 function getPtExercises() {

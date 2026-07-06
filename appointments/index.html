@@ -189,6 +189,83 @@
       padding: 16px 0;
     }
 
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .edit-toggle-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--muted);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .edit-toggle-btn.active {
+      color: var(--accent);
+      border-color: var(--accent-dim);
+    }
+
+    .field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .field-row:last-of-type { margin-bottom: 0; }
+    .field-row-inline { display: flex; gap: 8px; }
+    .field-row-inline .field-row { flex: 1; }
+
+    .field-input, .field-textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      outline: none;
+      color: var(--ink);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      padding: 8px 10px;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    .field-input:focus, .field-textarea:focus { border-color: var(--accent); }
+    .field-textarea { resize: none; height: 54px; line-height: 1.4; }
+
+    .save-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 12px;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.15s, transform 0.08s;
+    }
+
+    .save-btn:active:not(:disabled) { transform: scale(0.99); }
+    .save-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+    .save-status {
+      display: none;
+      margin-top: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    .save-status.ok  { display: block; color: var(--green); }
+    .save-status.err { display: block; color: var(--accent); }
+
     .footer {
       margin-top: 20px;
       font-family: 'Share Tech Mono', monospace;
@@ -207,7 +284,10 @@
         <h1>APPOINT<span>MENTS</span></h1>
         <p>Upcoming schedule</p>
       </div>
-      <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
+      <div class="header-actions">
+        <a class="back-link" href="../dashboard/index.html">&#9664; return to dashboard</a>
+        <button id="edit-toggle" class="edit-toggle-btn" onclick="toggleEditMode()">&#9998; Edit</button>
+      </div>
     </div>
 
     <div id="appt-list"></div>
@@ -218,6 +298,9 @@
 
   <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlX9lSgCYNm4qc1pYUEz-VWnjVSoCjhAgXCLPbKyMG4RbwyT7fn-Ks0xGf6JHF-8lc/exec';
+
+    let appts     = [];
+    let editMode  = false;
 
     function parseDate(dateStr) {
       const [yr, mo, dy] = (dateStr || '').split('-').map(Number);
@@ -236,57 +319,19 @@
       });
     }
 
+    function escapeAttr(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     async function loadAppointments() {
       try {
-        const res   = await fetch(`${SCRIPT_URL}?action=getAppointments`);
-        const appts = await res.json();
-
-        const list = document.getElementById('appt-list');
-        list.innerHTML = '';
-
-        if (!appts.length) {
-          list.innerHTML = '<div class="no-appts">// no upcoming appointments</div>';
-          return;
-        }
-
-        appts.forEach(appt => {
-          const days     = daysUntil(appt.date);
-          const daysStr  = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
-          const urgency  = days <= 1 ? 'urgent' : days <= 7 ? 'soon' : '';
-          const hasNotes = appt.notes && appt.notes !== 'undefined' && appt.notes.trim() !== '';
-
-          const card = document.createElement('div');
-          card.className = `appt-card ${urgency}`;
-
-          const hasWith = appt.with && appt.with.trim() !== '';
-
-          card.innerHTML = `
-            <div class="appt-title-row">
-              <div class="appt-title">${appt.title}</div>
-              <div class="appt-days">// ${daysStr}</div>
-            </div>
-            <div class="appt-datetime">${formatDate(appt.date)}${appt.time ? ' &middot; ' + appt.time : ''}</div>
-            <div class="sep-mini"></div>
-            ${hasWith ? `
-              <div class="detail-row">
-                <div class="detail-label">With</div>
-                <div class="detail-value">${appt.with}</div>
-              </div>` : ''}
-            ${appt.location_name ? `
-              <div class="detail-row">
-                <div class="detail-label">Location</div>
-                <div class="detail-value">${appt.location_name}</div>
-              </div>` : ''}
-            ${hasNotes ? `
-              <div class="sep-mini"></div>
-              <div class="detail-row">
-                <div class="detail-label">Notes / what to bring</div>
-                <div class="detail-value">${appt.notes}</div>
-              </div>` : ''}
-          `;
-
-          list.appendChild(card);
-        });
+        const res = await fetch(`${SCRIPT_URL}?action=getAppointments`);
+        appts = await res.json();
+        render();
 
         document.getElementById('footer').textContent =
           `updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()} · managed via google sheet`;
@@ -295,6 +340,140 @@
         document.getElementById('appt-list').innerHTML =
           '<div class="no-appts" style="color:var(--accent)">// ERR: could not load appointments</div>';
       }
+    }
+
+    function toggleEditMode() {
+      editMode = !editMode;
+      const btn = document.getElementById('edit-toggle');
+      btn.innerHTML = editMode ? '&#10003; Done' : '&#9998; Edit';
+      btn.classList.toggle('active', editMode);
+      render();
+    }
+
+    function render() {
+      const list = document.getElementById('appt-list');
+      list.innerHTML = '';
+
+      if (!appts.length) {
+        list.innerHTML = '<div class="no-appts">// no upcoming appointments</div>';
+        return;
+      }
+
+      appts.forEach(appt => {
+        list.appendChild(editMode ? renderEditCard(appt) : renderViewCard(appt));
+      });
+    }
+
+    function renderViewCard(appt) {
+      const days     = daysUntil(appt.date);
+      const daysStr  = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+      const urgency  = days <= 1 ? 'urgent' : days <= 7 ? 'soon' : '';
+      const hasNotes = appt.notes && appt.notes !== 'undefined' && appt.notes.trim() !== '';
+      const hasWith  = appt.with && appt.with.trim() !== '';
+
+      const card = document.createElement('div');
+      card.className = `appt-card ${urgency}`;
+
+      card.innerHTML = `
+        <div class="appt-title-row">
+          <div class="appt-title">${escapeHtml(appt.title)}</div>
+          <div class="appt-days">// ${daysStr}</div>
+        </div>
+        <div class="appt-datetime">${formatDate(appt.date)}${appt.time ? ' &middot; ' + escapeHtml(appt.time) : ''}</div>
+        <div class="sep-mini"></div>
+        ${hasWith ? `
+          <div class="detail-row">
+            <div class="detail-label">With</div>
+            <div class="detail-value">${escapeHtml(appt.with)}</div>
+          </div>` : ''}
+        ${appt.location_name ? `
+          <div class="detail-row">
+            <div class="detail-label">Location</div>
+            <div class="detail-value">${escapeHtml(appt.location_name)}</div>
+          </div>` : ''}
+        ${hasNotes ? `
+          <div class="sep-mini"></div>
+          <div class="detail-row">
+            <div class="detail-label">Notes / what to bring</div>
+            <div class="detail-value">${escapeHtml(appt.notes)}</div>
+          </div>` : ''}
+      `;
+
+      return card;
+    }
+
+    function renderEditCard(appt) {
+      const card = document.createElement('div');
+      card.className = 'appt-card';
+
+      card.innerHTML = `
+        <div class="field-row">
+          <div class="detail-label">Title</div>
+          <input class="field-input" data-field="title" value="${escapeAttr(appt.title)}">
+        </div>
+        <div class="field-row-inline">
+          <div class="field-row">
+            <div class="detail-label">Date</div>
+            <input type="date" class="field-input" data-field="date" value="${escapeAttr(appt.date)}">
+          </div>
+          <div class="field-row">
+            <div class="detail-label">Time</div>
+            <input class="field-input" data-field="time" placeholder="e.g. 2:30 PM" value="${escapeAttr(appt.time)}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="detail-label">With</div>
+          <input class="field-input" data-field="with" value="${escapeAttr(appt.with)}">
+        </div>
+        <div class="field-row">
+          <div class="detail-label">Location name</div>
+          <input class="field-input" data-field="location_name" value="${escapeAttr(appt.location_name)}">
+        </div>
+        <div class="field-row">
+          <div class="detail-label">Location address</div>
+          <input class="field-input" data-field="location_address" value="${escapeAttr(appt.location_address)}">
+        </div>
+        <div class="field-row">
+          <div class="detail-label">Notes / what to bring</div>
+          <textarea class="field-textarea" data-field="notes">${escapeHtml(appt.notes)}</textarea>
+        </div>
+        <button class="save-btn">Save</button>
+        <div class="save-status"></div>
+      `;
+
+      const saveBtn = card.querySelector('.save-btn');
+      const status  = card.querySelector('.save-status');
+
+      saveBtn.addEventListener('click', async () => {
+        const fields = {};
+        card.querySelectorAll('[data-field]').forEach(el => { fields[el.dataset.field] = el.value.trim(); });
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = '... Saving';
+        status.className = 'save-status';
+
+        try {
+          const qs = Object.entries(fields)
+            .map(([k, v]) => `&${k}=${encodeURIComponent(v)}`)
+            .join('');
+          const res  = await fetch(`${SCRIPT_URL}?action=updateAppointment&row=${appt.row}${qs}`);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          Object.assign(appt, fields);
+          saveBtn.textContent = 'Save';
+          saveBtn.disabled = false;
+          status.textContent = '// saved';
+          status.className = 'save-status ok';
+        } catch (err) {
+          saveBtn.textContent = 'Save';
+          saveBtn.disabled = false;
+          status.textContent = '// ERR: failed to save — tap to retry';
+          status.className = 'save-status err';
+        }
+      });
+
+      return card;
     }
 
     loadAppointments();
