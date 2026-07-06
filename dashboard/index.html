@@ -605,7 +605,7 @@
     function getRomSchedule() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const start = new Date('2026-06-02T00:00:00');
+      const start = new Date('2026-07-06T00:00:00');
       const week = Math.floor(Math.floor((today - start) / 86400000) / 7) + 1;
       if (week <= 2) return { goal: 45,  label: '3 × 15 min' };
       if (week === 3) return { goal: 50, label: '2 × 25 min' };

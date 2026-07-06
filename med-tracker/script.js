@@ -185,6 +185,7 @@ function logDose(params) {
   const timestamp = Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm:ss');
 
   logSheet.appendRow([dateVal, timeVal, med.id, med.name, med.dose, med.num_pills, timestamp]);
+  logSheet.getRange(logSheet.getLastRow(), 7).setNumberFormat('@STRING@');
 
   return { success: true, timestamp, med: med.name };
 }
@@ -554,7 +555,7 @@ function getRomDegreeHistory() {
   const data  = sheet.getDataRange().getValues();
   const tz    = Session.getScriptTimeZone();
 
-  const start = new Date('2026-06-02T00:00:00');
+  const start = new Date('2026-07-06T00:00:00');
   const days  = [];
   for (let i = 0; i < 21; i++) {
     const d = new Date(start);
